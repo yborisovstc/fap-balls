@@ -1,0 +1,80 @@
+
+fapws=/home/yborisov/projects/fap/git/fapws CD=. filter="autogen.sh Makefile.am *.ac AUTHORS COPYING ChangeLog README NEWS *.in {
+ autogen.sh
+ Makefile.am
+ configure.ac
+ AUTHORS
+ COPYING
+ ChangeLog
+ README
+ NEWS
+ Makefile.in
+ libfapws.pc.in
+ debian=debian CD=. filter="*" {
+  README.Debian
+  changelog
+  compat
+  control
+  copyright
+  dirs
+  docs
+  files
+  rules
+  fapws.debhelper.log
+ }
+src=src CD=. filter="*.h *.cpp Makefile.am" {
+  fapbase.h
+  fapext.h
+  fapfact.h
+  faplogger.h
+  fapplat.h
+  fapws.h
+  panics.h
+  fapbase.cpp
+  fapext.cpp
+  fapfact.cpp
+  faplogger.cpp
+  fapws.cpp
+  Makefile.am
+} 
+debian=debian CD=. filter="rules changelog README.Debian copyright" {
+  rules
+  changelog
+  README.Debian
+  copyright
+}
+}
+
+
+fap-balls=/home/yborisov/projects/fap/git/fap-balls CD=. filter="Makefile.am configure.ac *.sh *.in ChangeLog" {
+ Makefile.am
+ configure.ac
+ autogen.sh
+ ltmain.sh
+ Makefile.in
+ ChangeLog
+ debian=debian CD=. filter="*" {
+  README.Debian
+  changelog
+  compat
+  control
+  copyright
+  dirs
+  docs
+  fap-balls.dirs
+  fap-balls.install
+  rules
+  fap-balls-0.0.4.debhelper.log
+ }
+ src=src CD=. filter="Makefile.am *.c *.cpp *.h Makefile" {
+  Makefile.am
+  fap-balls-model.cpp
+  fapwstsob.cpp
+  fapwstst1.cpp
+  main.cpp
+  fap-balls-model.h
+  fapwstsob.h
+  fapwstst1qt.h
+  Makefile
+ }
+}

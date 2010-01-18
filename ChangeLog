@@ -1,0 +1,13 @@
+
+ver. 0.0.4:
+	Implemented changeable Borders
+
+ver. 0.0.3:
+	Added balls hook
+
+ver. 0.0.2:
+	Coloring of balls working
+
+ver. 0.0.1:
+	Initial version coming from Win32
+	Adaptation to GTK

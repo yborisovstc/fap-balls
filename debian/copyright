@@ -1,0 +1,21 @@
+This package was debianized by Yuri Borisov <Yuri.Borisov@teleca.com> on
+Fri, 24 Jul 2009 15:33:38 +0400.
+
+It was downloaded from <url://example.com>
+
+Upstream Author(s):
+    Yuri Borisov <Yuri.Borisov@teleca.com>
+
+Copyright:
+
+    Copyright (C) 2009 Name Yuri Borisov
+
+License:
+
+    <Put the license of the package here indented by 4 spaces>
+
+The Debian packaging is (C) 2009, Yuri Borisov <Yuri.Borisov@teleca.com> and
+is licensed under the GPL, see `/usr/share/common-licenses/GPL'.
+
+# Please also look if there are files or directories which have a
+# different copyright/license attached and list them here.
