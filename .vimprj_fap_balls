@@ -1,15 +1,16 @@
 
-fapws=/home/yborisov/projects/fap/git/fapws CD=. filter="autogen.sh Makefile.am *.ac AUTHORS COPYING ChangeLog README NEWS *.in {
- autogen.sh
- Makefile.am
- configure.ac
- AUTHORS
- COPYING
- ChangeLog
- README
- NEWS
- Makefile.in
- libfapws.pc.in
+#fapws=/home/yborisov/projects/fap/git/fapws CD=. filter="autogen.sh Makefile.am *.ac AUTHORS COPYING ChangeLog README NEWS *.in {
+fapws=/scratchbox/users/yborisov/home/yborisov/projects/fap/git/fapws CD=. filter="autogen.sh Makefile.am *.ac AUTHORS COPYING ChangeLog README NEWS *.in {
+  autogen.sh
+  Makefile.am
+  configure.ac
+  AUTHORS
+  COPYING
+  ChangeLog
+  README
+  NEWS
+  Makefile.in
+  libfapws.pc.in
  debian=debian CD=. filter="*" {
   README.Debian
   changelog
@@ -46,13 +47,15 @@ debian=debian CD=. filter="rules changelog README.Debian copyright" {
 }
 
 
-fap-balls=/home/yborisov/projects/fap/git/fap-balls CD=. filter="Makefile.am configure.ac *.sh *.in ChangeLog" {
- Makefile.am
- configure.ac
- autogen.sh
- ltmain.sh
- Makefile.in
- ChangeLog
+#fap-balls=/home/yborisov/projects/fap/git/fap-balls CD=. filter="Makefile.am configure.ac *.sh *.in ChangeLog" {
+fap-balls=/scratchbox/users/yborisov/home/yborisov/projects/fap/git/fap-balls CD=. filter="Makefile.am configure.ac *.sh *.in ChangeLog INSTALL" {
+   Makefile.am
+   configure.ac
+   autogen.sh
+   ltmain.sh
+   Makefile.in
+   ChangeLog
+   INSTALL
  debian=debian CD=. filter="*" {
   README.Debian
   changelog
