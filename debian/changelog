@@ -1,3 +1,9 @@
+fap-balls (1.0.4-1) unstable; urgency=low
+
+  * Ported to Fremantle platform
+
+ -- Yuri Borisov <Yuri.Borisov@teleca.com>  Fri, 25 Jan 2010 15:33:38 +0400
+
 fap-balls (0.0.4-1) unstable; urgency=low
 
   * Implemented balls hooks, and moveable borders

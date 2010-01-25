@@ -650,7 +650,8 @@ void CFT_Ball::Draw()
     centx = coord.iX;
     centy = coord.iY;
     int mass = ~*iMass;
-    TUint8 cblue = 0xff - (mass*0xff)/KMassMax;
+    //TUint8 cblue = 0xff - (mass*0xff)/KMassMax;
+    TUint8 cblue = 0xff;
     if (cblue < 0)
 	cblue = 0x00;
     TUint8 cgreen = 0x00;

@@ -2,6 +2,8 @@
  * All rights reserved
  */
 
+#include <hildon/hildon.h>
+#include <libosso.h>
 #include <gtk/gtk.h>
 #include <fapext.h>
 #include "fap-balls-model.h"
@@ -119,21 +121,41 @@ CFT_Area* farea = NULL;
 CFT_BArrea_Painter* fapainter = NULL;
 
 
-static GtkWidget *main_window;
+static HildonWindow *main_window;
 static GtkWidget *drawing_area;
+
+#define APP_NAME "fapballs"
+#define PACKAGE_DBUS_NAME "com.nokia."APP_NAME
 
 int main(int argc, char *argv[])
 {
-
     printf("main\n");
-	    
-    gtk_init(&argc, &argv);
 
-    main_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    osso_context_t* context = NULL;
+    HildonProgram *program = NULL;
+    HildonWindow *window = NULL;
+
+    // Initialise the locale stuff
+//    setlocale(LC_ALL, "");
+//    bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR);
+//    bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8");
+//    textdomain(GETTEXT_PACKAGE);
+
+    hildon_gtk_init (&argc, &argv);
+
+    program = HILDON_PROGRAM( hildon_program_get_instance() );
+    g_set_application_name("fap_balls");
+    main_window = HILDON_WINDOW( hildon_window_new() );
+    hildon_program_add_window(program, HILDON_WINDOW(window) );
+
+    context = osso_initialize(PACKAGE_DBUS_NAME, PACKAGE_VERSION, TRUE, NULL);
+    if(context == NULL){
+        printf("libOSSO init failed!!!\n");
+        return EXIT_FAILURE;
+    }
+
     drawing_area = gtk_drawing_area_new();
-    // gtk_widget_set_size_request(drawing_area, 100, 100);
     gtk_container_add(GTK_CONTAINER(main_window), drawing_area);
-//    gtk_window_set_default_size(GTK_WINDOW(main_window), 500, 500);
 
     /* Define the header for "delete_event" signal (this is given
        by the window manager, usually by the "close" option, or on the titlebar) */
@@ -150,8 +172,6 @@ int main(int argc, char *argv[])
 
     /* Sets the event mask (see GdkEventMask) for a widget.
      * The event mask determines which events a widget will receive */
-//    gtk_widget_set_events (drawing_area, GDK_EXPOSURE_MASK | GDK_LEAVE_NOTIFY_MASK
-//	    | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK | GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK);
     gtk_widget_set_events (drawing_area, GDK_ALL_EVENTS_MASK);
 
     /* Create finite automata environment */
@@ -162,14 +182,17 @@ int main(int argc, char *argv[])
     farea = CFT_Area::NewL(KFAreaName, NULL, fapainter);
     fape->AddL(farea);
 
-    gtk_widget_show(main_window);
-    gtk_widget_show(drawing_area);
+    gtk_widget_show( GTK_WIDGET(main_window) );
+    gtk_widget_show_all(drawing_area);
 
     /* Use idle of main loop to drive FAP environment */
     g_timeout_add(KFapeTimeSlice, idle_event_handler, NULL);
 
     /* Created main loop */
     gtk_main(); 
+
+    osso_deinitialize(context);
+
     return 0;
 }
 
