@@ -70,14 +70,10 @@ fap-balls=/scratchbox/users/yborisov/home/yborisov/projects/fap/git/fap-balls CD
   fap-balls-0.0.4.debhelper.log
  }
  src=src CD=. filter="Makefile.am *.c *.cpp *.h Makefile" {
-  Makefile.am
-  fap-balls-model.cpp
-  fapwstsob.cpp
-  fapwstst1.cpp
-  main.cpp
-  fap-balls-model.h
-  fapwstsob.h
-  fapwstst1qt.h
-  Makefile
+    Makefile.am
+    fap-balls-model.cpp
+    main.cpp
+    fap-balls-model.h
+    Makefile
  }
 }
