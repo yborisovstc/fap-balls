@@ -99,6 +99,24 @@ _TEMPLATE_ void CAE_TState<CF_TdPointF>::DoOperation()
 {
 }
 
+_TEMPLATE_ char* CAE_TState<CF_TdPointF>::DataToStr(TBool aCurr) const
+{
+{
+    if (Len() != sizeof(CF_TdVectF))
+    {
+	//strcat(aBuf, "Error!");
+    }
+    else
+    {
+	CF_TdVectF* data = (CF_TdVectF*) iCurr;
+	//sprintf(aBuf, "<%f,%f>", data->iX, data->iY);
+    }
+}
+}
+
+_TEMPLATE_ void CAE_TState<CF_TdPointF>::DataFromStr(const char* aStr, void *aData) const
+{
+}
 
 _TEMPLATE_ TBool CAE_TState<CF_TdVectF>::SetTrans(TTransInfo aTinfo)
 {
@@ -113,14 +131,14 @@ _TEMPLATE_ void CAE_TState<CF_TdVectF>::DoOperation()
 }
 
 
-    CFT_Area::CFT_Area(const char* aInstName, CAE_Object* aMan, MBallAreaWindow* aBallAreaWnd)
-: CAE_Object(aInstName, aMan), iBallAreaWnd(aBallAreaWnd)
+    CFT_Area::CFT_Area(const char* aInstName, CAE_Object* aMan, MBallAreaWindow* aBallAreaWnd, CF_Rect *aRect)
+: CAE_Object(aInstName, aMan), iBallAreaWnd(aBallAreaWnd), iInitRect(*aRect)
 {
 }
 
-CFT_Area* CFT_Area::NewL(const char* aInstName, CAE_Object* aMan, MBallAreaWindow* aBallAreaWnd)
+CFT_Area* CFT_Area::NewL(const char* aInstName, CAE_Object* aMan, MBallAreaWindow* aBallAreaWnd, CF_Rect *aRect)
 {
-    CFT_Area* self = new CFT_Area(aInstName, aMan, aBallAreaWnd);
+    CFT_Area* self = new CFT_Area(aInstName, aMan, aBallAreaWnd, aRect);
     self->ConstructL();
     return self;
 }
@@ -143,12 +161,13 @@ CFT_Ball* CFT_Area::CreateBall(float aCoordX,  float aCoordY, TInt aMass, TInt a
     CFT_Ball* ball;
     if (aBorder)
     {
+	// TODO [YB] To remove custom border at all
+	//ball = CFT_Border::NewL(aInstName, this, iBallAreaWnd);
 	ball = CFT_Ball::NewL(aInstName, this, iBallAreaWnd);
     }
     else
     {
-	// TODO YB Why border is created on aBorder FALSE ??
-	ball = CFT_Border::NewL(aInstName, this, iBallAreaWnd);
+	ball = CFT_Ball::NewL(aInstName, this, iBallAreaWnd);
     }
     CF_TdPointF coord = {aCoordX, aCoordY};
     (*ball->iCoord) = coord;
@@ -159,6 +178,15 @@ CFT_Ball* CFT_Area::CreateBall(float aCoordX,  float aCoordY, TInt aMass, TInt a
     return ball;
 }
 
+CFT_Ball* CFT_Area::CreateBorder(float aCoordX,  float aCoordY, const char* aInstName, TTransFun aHookUpdate)
+{
+    CFT_Ball *bord = CreateBall(aCoordX, aCoordY, KBorderMass, KBorderRadius, aInstName, ETrue);	
+    // Bind hook of the border with area rectangle
+    LinkL(bord->iMcPos, iRect, aHookUpdate);
+    // Make the border hooked initially
+    *(bord->iHookedPerm) = TRUE;
+    *(bord->iTransp) = TRUE;
+}
 
 void CFT_Area::LinkBall(CFT_Ball* aBallRec, CFT_Ball* aBallExt)
 {
@@ -203,7 +231,6 @@ void CFT_Area::AddBallL(CFT_Ball* aObBall, TBool aUseAreaHook)
 
 void CFT_Area::ConstructL()
 {
-    CF_Rect rt = iBallAreaWnd->boundaryRect();
     //	TRACE ("WARNING !! Test\n");
     CAE_Object::ConstructL();
     iBeaconC = CAE_TState<TInt>::NewL(KAreaBeaconCName, this, TTransInfo());
@@ -211,37 +238,22 @@ void CFT_Area::ConstructL()
     iLbDown = CAE_TState<TInt>::NewL("LbDown", this, TTransInfo(), CAE_StateBase::EType_Input);
     iMcPos = CAE_TState<CF_TdPoint>::NewL("McPos", this, TTransInfo(), CAE_StateBase::EType_Input);
     iRect = CAE_TState<CF_Rect>::NewL(KAreaRectName, this, TTransInfo(), CAE_StateBase::EType_Input);
+    *iRect = iInitRect;
 
     // Create borders
+    CF_Rect rt = iInitRect;
     float midx, midy;
     midx = (rt.iRightLower.iX - rt.iLeftUpper.iX)/2.0;
     midy = (rt.iRightLower.iY - rt.iLeftUpper.iY)/2.0;
     printf("area_constr: lx= %d, ly= %d, rx= %d, ry= %d\n", rt.iLeftUpper.iX, rt.iLeftUpper.iY, rt.iRightLower.iX, rt.iRightLower.iY);
-    CFT_Ball *bord_left, *bord_right, *bord_top, *bord_bottom = NULL;
-    bord_left = CreateBall(rt.iLeftUpper.iX-KBorderRadius, midy, KBorderMass, KBorderRadius, KObjBorderLeftName, ETrue);	
-    // Bind hook of the border with area rectangle
-    LinkL(bord_left->iMcPos, iRect, CAE_TRANS(UpdateBordHookLeft));
-    // Make the border hooked initially
-    *(bord_left->iHookedPerm) = TRUE;
-    *(bord_left->iTransp) = TRUE;
-    bord_right = CreateBall(rt.iRightLower.iX + KBorderRadius, midy, KBorderMass, KBorderRadius, KObjBorderRightName, ETrue);	
-    // Bind hook of the border with area rectangle
-    LinkL(bord_right->iMcPos, iRect, CAE_TRANS(UpdateBordHookRight));
-    // Make the border hooked initially
-    *(bord_right->iHookedPerm) = TRUE;
-    *(bord_right->iTransp) = TRUE;
-    bord_top = CreateBall(midx, rt.iLeftUpper.iY - KBorderRadius, KBorderMass, KBorderRadius, KObjBorderTopName, ETrue);	
-    LinkL(bord_top->iMcPos, iRect, CAE_TRANS(UpdateBordHookTop));
-    *(bord_top->iHookedPerm) = TRUE;
-    *(bord_top->iTransp) = TRUE;
-    bord_bottom = CreateBall(midx, rt.iRightLower.iY + KBorderRadius, KBorderMass, KBorderRadius, KObjBorderBottomName, ETrue);	
-    LinkL(bord_bottom->iMcPos, iRect, CAE_TRANS(UpdateBordHookBottom));
-    *(bord_bottom->iHookedPerm) = TRUE;
-    *(bord_bottom->iTransp) = TRUE;
+    CreateBorder(rt.iLeftUpper.iX-KBorderRadius, midy, KObjBorderLeftName, CAE_TRANS(UpdateBordHookLeft));	
+    CreateBorder(rt.iRightLower.iX + KBorderRadius, midy, KObjBorderRightName, CAE_TRANS(UpdateBordHookRight));	
+    CreateBorder(midx, rt.iLeftUpper.iY - KBorderRadius, KObjBorderTopName, CAE_TRANS(UpdateBordHookTop));	
+    CreateBorder(midx, rt.iRightLower.iY + KBorderRadius, KObjBorderBottomName, CAE_TRANS(UpdateBordHookBottom));	
 
     // Create balls
-//    CreateBall(40, 40, 200, 20, "Ball1");
-//    CreateBall(300, 300, 20, 30, "Ball2");
+    CreateBall(40, 40, 2000, 20, "Ball1");
+    CreateBall(300, 300, 2000, 30, "Ball2");
     CreateBall(200, 400, 3000, 40, "Ball3");
 #if 0
     CreateBall(300, 300, 200, 40, "Ball2");
@@ -315,6 +327,19 @@ void CFT_Area::Draw()
 	ball->Draw();
 	ball = (CFT_Ball*) GetNextCompByType(KObUid_CAE_Object | KObUid_CAE_Var_Ball, &ctx);
     }
+
+    /*
+    // Draw borders
+    ctx = 0;
+    CFT_Ball* bord = (CFT_Ball*) GetNextCompByType(KObUid_CAE_Object | KObUid_CAE_Var_Border, &ctx);
+    
+
+    while (bord != NULL)
+    {
+	bord->Draw();
+	bord = (CFT_Ball*) GetNextCompByType(KObUid_CAE_Object | KObUid_CAE_Var_Border, &ctx);
+    }
+*/
 }
 
 
@@ -344,7 +369,7 @@ CFT_Ball* CFT_Ball::NewL(const char* aInstName, CAE_Object* aMan, MBallAreaWindo
 void CFT_Ball::ConstructL()
 {
     CAE_Object::ConstructL();
-    iCoord = CAE_TState<CF_TdPointF>::NewL(KBallCoordName, this, CAE_TRANS(UpdateCoord), CAE_StateBase::EType_Reg, VectFLogFun);
+    iCoord = CAE_TState<CF_TdPointF>::NewL(KBallCoordName, this, CAE_TRANS(UpdateCoord), CAE_StateBase::EType_Reg);
     iMass = CAE_TState<TInt>::NewL(KBallMassName, this, TTransInfo(), CAE_StateBase::EType_Input);
     iInpV = CAE_TState<CF_TdVectF>::NewL(KBallVelName, this, CAE_TRANS(UpdateVelocity), CAE_StateBase::EType_Input);
     iRad = CAE_TState<TInt>::NewL(KBallRadiusName, this, TTransInfo(), CAE_StateBase::EType_Input);
@@ -658,4 +683,17 @@ void CFT_Ball::Draw()
 	cgreen |= 0xff;
     iBallAreaWnd->drawBall(CF_TdPoint(centx, centy), rad, CF_TdColor(0x00, cgreen, cblue));
 }
+
+
+// Border 
+
+
+
+CFT_Border* CFT_Border::NewL(const char* aInstName, CAE_Object* aMan, MBallAreaWindow* aBallAreaWnd)
+{
+    CFT_Border* self = new CFT_Border(aInstName, aMan, aBallAreaWnd);
+    self->ConstructL();
+    return self;
+};
+
 

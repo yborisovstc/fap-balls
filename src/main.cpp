@@ -14,24 +14,13 @@ class CFT_BArrea_Painter: public MBallAreaWindow
 public:
 	CFT_BArrea_Painter(GtkWidget* aWidget) : iWidget(aWidget) {}
 	virtual ~CFT_BArrea_Painter() {}
-	void beginPaint();
-	void endPaint();
 private:
 	//from MBallAreaWindow
 	virtual void redraw(CF_TdPoint aCenter, TInt aRadius, TBool aErase);
 	virtual void drawBall(CF_TdPoint aCenter, TInt aRadius, CF_TdColor aColor);
-	virtual CF_Rect boundaryRect();
 private:
 	GtkWidget* iWidget;
 };
-
-void CFT_BArrea_Painter::beginPaint()
-{
-}
-
-void CFT_BArrea_Painter::endPaint()
-{
-}
 
 void CFT_BArrea_Painter::redraw(CF_TdPoint aCenter, TInt aRadius, TBool aErase)
 {
@@ -71,18 +60,6 @@ void CFT_BArrea_Painter::drawBall(CF_TdPoint aCenter, TInt aRadius, CF_TdColor a
      gdk_gc_set_rgb_fg_color(gc, &color);
     gdk_draw_arc (iWidget->window, gc, TRUE, x, y, size, size, 0, 64 * 360);
 }
-
-CF_Rect CFT_BArrea_Painter::boundaryRect()
-{
-    gint x, y, width, height, depth;
-//    gdk_window_get_position(iWidget->window, &x, &y);
-//    gdk_drawable_get_size(iWidget->window, &width, &height);
-//    printf("rect: x= %d, y= %d, w= %d, h= %d\n", x, y, width, height);
-    gdk_window_get_geometry(iWidget->window, &x, &y, &width, &height, &depth);
-
-    return CF_Rect(x, y, x+width, y+height);
-}
-
 
 
 
@@ -158,8 +135,11 @@ int main(int argc, char *argv[])
     fape = CAE_Env::NewL(1, KLogSpecFileName);
     /* Create area painter */
     fapainter = new CFT_BArrea_Painter(drawing_area);
+    gint x, y, width, height, depth;
+    gdk_window_get_geometry(drawing_area->window, &x, &y, &width, &height, &depth);
+    CF_Rect rect = CF_Rect(x, y, x+width, y+height);
     /* Create 2d area */
-    farea = CFT_Area::NewL(KFAreaName, NULL, fapainter);
+    farea = CFT_Area::NewL(KFAreaName, NULL, fapainter, &rect);
     fape->AddL(farea);
 
     gtk_widget_show(main_window);

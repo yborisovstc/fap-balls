@@ -2,9 +2,8 @@ Source: fap-balls
 Section: libs
 Priority: extra
 Maintainer: Yuri Borisov <Yuri.Borisov@teleca.com>
-Build-Depends: debhelper (>= 7)
+Build-Depends: debhelper (>= 7), fapws-dev (>= 0.0.1-4)
 Standards-Version: 3.7.3
-Homepage: <insert the upstream URL, if relevant>
 
 Package: fap-balls
 Architecture: any

@@ -10,8 +10,8 @@ fapws=/home/yborisov/projects/fap/git/fapws CD=. filter="autogen.sh Makefile.am 
  NEWS
  Makefile.in
  libfapws.pc.in
- debian=debian CD=. filter="*" {
-  README.Debian
+debian=debian CD=. filter="*" {
+ README.Debian
   changelog
   compat
   control
@@ -21,8 +21,8 @@ fapws=/home/yborisov/projects/fap/git/fapws CD=. filter="autogen.sh Makefile.am 
   files
   rules
   fapws.debhelper.log
- }
-src=src CD=. filter="*.h *.cpp Makefile.am" {
+}
+src=src CD=. filter="*.h *.cpp *.xml *.dtd Makefile.am" {
   fapbase.h
   fapext.h
   fapfact.h
@@ -35,16 +35,48 @@ src=src CD=. filter="*.h *.cpp Makefile.am" {
   fapfact.cpp
   faplogger.cpp
   fapws.cpp
+  sample.xml
+  objspec.dtd
   Makefile.am
 } 
-debian=debian CD=. filter="rules changelog README.Debian copyright" {
-  rules
-  changelog
-  README.Debian
-  copyright
-}
+ test=test CD=. filter="*" {
+  Makefile
+  Makefile.am
+  Makefile.in
+  ut-fapws-lib
+  ut_fapws_main.cpp
+  ut_game_xo.cpp
+  ut_game_xo.h
+  ut_simple_increase.cpp
+  ut_simple_increase.h
+  ut_spec_creat.cpp
+  ut_spec_creat.h
+  ut_spec_creat_1.xml
+  ut_fapws_lib-ut_fapws_main.o
+  ut_fapws_lib-ut_game_xo.o
+  ut_fapws_lib-ut_simple_increase.o
+  ut_fapws_lib-ut_spec_creat.o
+ }
 }
 
+fap-crtst=/home/yborisov/projects/fap/git/fap-crtst CD=. filter="*" {
+ AUTHORS
+ COPYING
+ ChangeLog
+ INSTALL
+ Makefile.am
+ NEWS
+ README
+ configure.ac
+ src=src CD=. filter="*.cpp *.h *.am *.xml *.dtd" {
+  fap-crtst-model.cpp
+  main.cpp
+  fap-crtst-model.h
+  Makefile.am
+  area.xml
+  sample.dtd
+ }
+}
 
 fap-balls=/home/yborisov/projects/fap/git/fap-balls CD=. filter="Makefile.am configure.ac *.sh *.in ChangeLog" {
  Makefile.am
@@ -69,12 +101,41 @@ fap-balls=/home/yborisov/projects/fap/git/fap-balls CD=. filter="Makefile.am con
  src=src CD=. filter="Makefile.am *.c *.cpp *.h Makefile" {
   Makefile.am
   fap-balls-model.cpp
-  fapwstsob.cpp
-  fapwstst1.cpp
   main.cpp
   fap-balls-model.h
-  fapwstsob.h
-  fapwstst1qt.h
   Makefile
  }
+}
+
+fap-aest=/home/yborisov/projects/fap/git/fap-aest CD=. filter="*" {
+ ReadMe.txt
+  StdAfx.cpp
+  StdAfx.h
+  fapwstsob.cpp
+  fapwstsob.h
+  fapwstst1.aps
+  fapwstst1.cpp
+  fapwstst1.dsp
+  fapwstst1.dsw
+  fapwstst1.opt
+  fapwstst1.plg
+  fapwstst1.rc
+  resource.h
+}
+
+fap-ape-v1=/home/yborisov/projects/fap/git/fap-ape-v1 CD=. filter="*" {
+ ReadMe.txt
+  StdAfx.cpp
+  StdAfx.h
+  cursor1.cur
+  fapwstsob.cpp
+  fapwstsob.h
+  fapwstst1.aps
+  fapwstst1.cpp
+  fapwstst1.dsp
+  fapwstst1.dsw
+  fapwstst1.opt
+  fapwstst1.plg
+  fapwstst1.rc
+  resource.h
 }

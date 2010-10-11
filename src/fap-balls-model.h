@@ -94,7 +94,6 @@ class MBallAreaWindow
 public:
 	virtual void redraw(CF_TdPoint aCenter, TInt aRadius, TBool aErase) = 0;
 	virtual void drawBall(CF_TdPoint aCenter, TInt aRadius, CF_TdColor aColor) = 0;
-	virtual CF_Rect boundaryRect() = 0;
 };
 
 // Sumulator of 2d area. It contains the base points - beacons to 
@@ -103,22 +102,23 @@ public:
 class CFT_Area: public CAE_Object
 {
 public:
-	static CFT_Area* NewL(const char* aInstName, CAE_Object* aReg, MBallAreaWindow* aBallAreaWnd);
-	CFT_Area(const char* aInstName, CAE_Object* aMan, MBallAreaWindow* aBallAreaWnd);
+	static CFT_Area* NewL(const char* aInstName, CAE_Object* aReg, MBallAreaWindow* aBallAreaWnd, CF_Rect *aRect);
+	CFT_Area(const char* aInstName, CAE_Object* aMan, MBallAreaWindow* aBallAreaWnd, CF_Rect *aRect);
 	virtual ~CFT_Area();
 	void Draw();
 	void AddBallL(float aCoordX,  float aCoordY, TInt aMass, TInt aRad, const char* aName = NULL);
 	void AddBallL(CFT_Ball* aObBall, TBool aUseAreaHook);
 protected:
+	void ConstructL();
 	CAE_TRANS_DEF(UpdateInit, CFT_Area);
 	CAE_TRANS_DEF(UpdateBordHookLeft, CFT_Area);
 	CAE_TRANS_DEF(UpdateBordHookRight, CFT_Area);
 	CAE_TRANS_DEF(UpdateBordHookTop, CFT_Area);
 	CAE_TRANS_DEF(UpdateBordHookBottom, CFT_Area);
 private:
-	void ConstructL();
 	static void LinkBall(CFT_Ball* aBallRec, CFT_Ball* aBallExt);
 	CFT_Ball* CreateBall(float aCoordX,  float aCoordY, TInt aMass, TInt aRad, const char* aInstName = NULL, TBool aBorder = EFalse);
+	CFT_Ball* CreateBorder(float aCoordX,  float aCoordY, const char* aInstName, TTransFun aHookUpdate);
 public:
 	MBallAreaWindow*	iBallAreaWnd;
 	CAE_TState<TInt>*	iLbDown;
@@ -126,6 +126,8 @@ public:
 	CAE_TState<CF_TdPoint>*	iMcPos; 
 	// Area rectangle
 	CAE_TState<CF_Rect>*	iRect; 
+	// Initial area rectangle
+	CF_Rect  iInitRect;
 private:
 	CAE_State*	iBeaconC;
 	CAE_State*	iBeaconX;
@@ -154,12 +156,12 @@ public:
 	void Draw();
 //	void VectFLogFun(char* aBuf, CAE_StateBase* aState);
 private:
-	void ConstructL();
 	static inline float GetDistance(CF_TdPointF aCoord1, CF_TdPointF aCoord2);
 	// Get projections of ball's velocity
 	static void GetProjOfVel(CF_TdPointF aAngleBeg, CF_TdPointF aAngleEnd, CF_TdVectF aVel, CF_TdVectF& aVelNorm, CF_TdVectF& aVelTang);
 	template <class T> inline static T GetInp(CAE_StateBase* aState, TInt aInd, const char* aName, T& aVal);
 protected:
+	void ConstructL();
 	CAE_TRANS_DEF(UpdateCoord, CFT_Ball);
 	CAE_TRANS_DEF(UpdateVelocity, CFT_Ball);
 	CAE_TRANS_DEF(UpdateSelected, CFT_Ball);
@@ -214,7 +216,11 @@ public:
 	{
 		EObStypeUid = KObUid_CAE_Var_Border
 	};
+
 public:
+	static CFT_Border* NewL(const char* aInstName, CAE_Object* aMan, MBallAreaWindow* aBallAreaWnd);
+	CFT_Border(const char* aInstName, CAE_Object* aMan, MBallAreaWindow* aBallAreaWnd):  
+	    CFT_Ball(aInstName, aMan, aBallAreaWnd) { iVariantUid = EObStypeUid;} 
 	static inline TInt ObjectUid(); 
 };
 
