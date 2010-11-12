@@ -1,0 +1,107 @@
+<?xml version="1.0" ?>
+
+<!-- Specification of FAP environment for fap-balls demo application -->
+
+<!DOCTYPE  caeenv SYSTEM "/home/yborisov/projects/fap/git/fapws/src/objspec.dtd" > 
+
+
+<caeenv>
+    <object type="area" id="Area" quiet="yes">
+	<object type="none" id="ball" quiet="yes">
+	    <logspec  event="cre"> <logdata id="new"/> </logspec>
+
+	    <state type="StPointF" id="Coord"  access="Out" transf="trans_coord" init="(0,0)"> 
+		<logspec event="upd"> <logdata id="new"/> </logspec> 
+		<!-- Inputs from itself -->
+		<inp id="CoordS"/> <inp id="InpVS"/> <inp id="MassS"/> <inp id="RadS"/> <inp id="TranspS"/> <inp id="MovedS"/> <inp id="McPosS"/> 
+		<!-- External inputs -->
+		<inp id="Coord.*"/> <inp id="Rad.*"/> <inp id="Transp.*"/> <inp id="InpV.*"/>
+	    </state>
+
+	    <state type="StInt" id="Mass"  access="Inp" init="100"> 
+		<logspec event="upd"> <logdata id="new"/> </logspec> 
+	    </state>
+
+	    <state type="StUint32" id="Rad"  access="Inp" init="30"> 
+		<logspec event="upd"> <logdata id="new"/> </logspec> 
+	    </state>
+
+	    <state type="StVectF" id="InpV" access="Inp" transf="trans_inpv" init="0"> 
+		<logspec event="upd"> <logdata id="new"/> </logspec> 
+		<!-- Inputs from itself -->
+		<inp id="CoordS"/> <inp id="MassS"/> <inp id="RadS"/> <inp id="InpVS"/> <inp id="TranspS"/> <inp id="MovedS"/> <inp id="McPosS"/> 
+		<!-- External inputs -->
+		<inp id="Coord.*"/> <inp id="Mass.*"/> <inp id="Rad.*"/> <inp id="Transp.*"/> <inp id="InpV.*"/>
+	    </state>
+
+	    <state type="StPoint" id="McPos"  access="Inp" init="0"> 
+		<logspec event="upd"> <logdata id="new"/> </logspec> 
+		<inp id="McPos"/> 
+	    </state>
+
+	    <state type="StBool" id="Moved"  access="Inp" transf="trans_moved" init="0"> 
+		<logspec event="upd"> <logdata id="new"/> </logspec> 
+		<inp id="LbDownS"/> <inp id="HookedPermS"/> <inp id="CoordS"/> <inp id="RadS"/> <inp id="McPosS"/> 
+	    </state>
+
+	    <state type="StBool" id="Transp"  access="Inp" init="0"> 
+		<logspec event="upd"> <logdata id="new"/> </logspec> 
+	    </state>
+
+	    <state type="StInt" id="LbDown"  access="Inp" init="0"> 
+		<logspec event="upd"> <logdata id="new"/> </logspec> 
+		<inp id="LbDown"/> 
+	    </state>
+
+	    <state type="StBool" id="HookedPerm"  access="Inp" init="0"> 
+		<logspec event="upd"> <logdata id="new"/> </logspec> 
+	    </state>
+
+	    <!-- TODO [YB] Input "MassS" is required only for condition for coord trans but not for transition itsels. Reconsider. -->
+	    <conn state="Coord"> <dep inp="CoordS" conn="Coord"/> <dep inp="InpVS" conn="InpV"/> <dep inp="MassS" conn="Mass"/> <dep inp="RadS" conn="Rad"/> 
+		<dep inp="TranspS" conn="Transp"/> <dep inp="MovedS" conn="Moved"/> <dep inp="McPosS" conn="McPos"/> </conn>
+	    <conn state="InpV"> <dep inp="CoordS" conn="Coord"/> <dep inp="RadS" conn="Rad"/> <dep inp="TranspS" conn="Transp"/> <dep inp="InpVS" conn="InpV"/>
+		<dep inp="MovedS" conn="Moved"/> <dep inp="McPosS" conn="McPos"/> <dep inp="MassS" conn="Mass"/> </conn>
+	    <conn state="Moved"> <dep inp="LbDownS" conn="LbDown"/> <dep inp="HookedPermS" conn="HookedPerm"/>  
+		<dep inp="CoordS" conn="Coord"/> <dep inp="RadS" conn="Rad"/> <dep inp="McPosS" conn="McPos"/> </conn>
+
+	</object> <!-- ball -->
+
+
+	<object type="ball" id="ball_1"> <state mut="Change" id="Mass" init="200"/> <state mut="Change" id="Coord" init="(200,500"/> </object>
+	<!--
+	<object type="ball" id="ball_2"> <state mut="Change" id="Mass" init="50"/> <state mut="Change" id="Coord" init="(400,300"/> </object>
+	-->
+
+	<state type="StRect" id="Rect" access="Inp" init="0">
+	    <logspec event="upd"> <logdata id="new"/> </logspec> </state>
+
+	<state type="StInt" id="LbDown" access="Inp" init="0">
+	    <logspec event="upd"> <logdata id="new"/> </logspec> </state>
+
+	<state type="StPoint" id="McPos"  access="Inp" init="0"> 
+	    <logspec event="upd"> <logdata id="new"/> </logspec> </state>
+
+	<!-- Ball_1 connections -->
+	<!--
+	<conn state="ball_1.Coord"> <dep inp="Coord.0" conn="ball_2.Coord"/> <dep inp="Rad.0" conn="ball_2.Rad"/> <dep inp="Transp.0" conn="ball_2.Transp"/>
+	    <dep inp="InpV.0" conn="ball_2.InpV"/></conn>
+	<conn state="ball_1.InpV"> <dep inp="Coord.0" conn="ball_2.Coord"/> <dep inp="Rad.0" conn="ball_2.Rad"/> <dep inp="Transp.0" conn="ball_2.Transp"/>
+	    <dep inp="InpV.0" conn="ball_2.InpV"/> <dep inp="Mass.0" conn="ball_2.Mass"/> </conn>
+	-->
+	<conn state="ball_1.LbDown"> <dep inp="LbDown" conn="LbDown"/></conn>
+	<conn state="ball_1.McPos"> <dep inp="McPos" conn="McPos"/></conn>
+
+	<!-- Ball_2 connections -->
+	<!--
+	<conn state="ball_2.Coord"> <dep inp="Coord.0" conn="ball_1.Coord"/> <dep inp="Rad.0" conn="ball_1.Rad"/> <dep inp="Transp.0" conn="ball_1.Transp"/>
+	    <dep inp="InpV.0" conn="ball_1.InpV"/></conn>
+	<conn state="ball_2.InpV"> <dep inp="Coord.0" conn="ball_1.Coord"/> <dep inp="Rad.0" conn="ball_1.Rad"/> <dep inp="Transp.0" conn="ball_1.Transp"/>
+	    <dep inp="InpV.0" conn="ball_1.InpV"/> <dep inp="Mass.0" conn="ball_1.Mass"/> </conn>
+	<conn state="ball_2.LbDown"> <dep inp="LbDown" conn="LbDown"/></conn>
+	<conn state="ball_2.McPos"> <dep inp="McPos" conn="McPos"/></conn>
+	-->
+
+    </object> <!-- area -->
+</caeenv>
+

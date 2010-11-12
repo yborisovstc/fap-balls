@@ -8,13 +8,24 @@
 
 
 
+const TTransInfo KTinfo_Update_coord = TTransInfo(CFT_Ball::UpdateCoord_S_, "trans_coord");
+const TTransInfo KTinfo_Update_velocity = TTransInfo(CFT_Ball::UpdateVelocity_S_, "trans_inpv");
+const TTransInfo KTinfo_Update_moved = TTransInfo(CFT_Ball::UpdateSelected_S_, "trans_moved");
+const TTransInfo* tinfos[] = {&KTinfo_Update_coord, &KTinfo_Update_velocity, &KTinfo_Update_moved, NULL};
+
+const TStateInfo KSinfo_Point = TStateInfo("StPoint", (TStateFactFun) CAE_TState<CF_TdPoint>::NewL );
+const TStateInfo KSinfo_PointF = TStateInfo("StPointF", (TStateFactFun) CAE_TState<CF_TdPointF>::NewL );
+const TStateInfo KSinfo_VectF = TStateInfo("StVectF", (TStateFactFun) CAE_TState<CF_TdVectF>::NewL );
+const TStateInfo KSinfo_Rect = TStateInfo("StRect", (TStateFactFun) CAE_TState<CF_Rect>::NewL );
+const TStateInfo* sinfos[] = {&KSinfo_Point, &KSinfo_PointF, &KSinfo_VectF, &KSinfo_Rect, NULL};
+
+const TInt KBallMassMax = 1000;
 
 class CFT_BArrea_Painter: public MBallAreaWindow
 {
 public:
 	CFT_BArrea_Painter(GtkWidget* aWidget) : iWidget(aWidget) {}
 	virtual ~CFT_BArrea_Painter() {}
-private:
 	//from MBallAreaWindow
 	virtual void redraw(CF_TdPoint aCenter, TInt aRadius, TBool aErase);
 	virtual void drawBall(CF_TdPoint aCenter, TInt aRadius, CF_TdColor aColor);
@@ -64,6 +75,8 @@ void CFT_BArrea_Painter::drawBall(CF_TdPoint aCenter, TInt aRadius, CF_TdColor a
 
 
 const char* KLogSpecFileName = "/var/log/faplogspec.txt";
+const char* KLogFileName = "fap-balls.log";
+const char* KSpecFileName = "fap-balls-spec.xml";
 const char* KFAreaName = "Area";
     
 /* Time slice of FAP environment, in milliseconds */
@@ -87,6 +100,9 @@ static gboolean handle_frame_event( GtkWidget *widget, GdkEvent *event, gpointer
 
 static gboolean handle_area_size_allocate_event( GtkWidget *widget, GtkAllocation *allocation, gpointer data);
 
+static void draw_area();
+
+static void draw_ball(CFT_Ball *aBall);
 
 /* Finite automata programming environment */
 CAE_Env* fape = NULL;
@@ -132,15 +148,15 @@ int main(int argc, char *argv[])
     gtk_widget_set_events (drawing_area, GDK_ALL_EVENTS_MASK);
 
     /* Create finite automata environment */
-    fape = CAE_Env::NewL(1, KLogSpecFileName);
+    fape = CAE_Env::NewL(sinfos, tinfos, KSpecFileName, 1, NULL, KLogFileName);
     /* Create area painter */
     fapainter = new CFT_BArrea_Painter(drawing_area);
     gint x, y, width, height, depth;
     gdk_window_get_geometry(drawing_area->window, &x, &y, &width, &height, &depth);
     CF_Rect rect = CF_Rect(x, y, x+width, y+height);
     /* Create 2d area */
-    farea = CFT_Area::NewL(KFAreaName, NULL, fapainter, &rect);
-    fape->AddL(farea);
+//    farea = CFT_Area::NewL(KFAreaName, NULL, fapainter, &rect);
+//    fape->AddL(farea);
 
     gtk_widget_show(main_window);
     gtk_widget_show(drawing_area);
@@ -156,7 +172,7 @@ int main(int argc, char *argv[])
 gboolean expose_event_callback(GtkWidget *widget, GdkEventExpose *event, gpointer data)
 {
     /* Redraw balls area */
-    farea->Draw();
+    draw_area();
     return TRUE;
 }
 
@@ -183,20 +199,28 @@ static void destroy_event_handler(GtkWidget *widget, gpointer data)
 
 static gboolean handle_button_press_event(GtkWidget *widget, GdkEventButton *event, gpointer data)
 {
+    CAE_Object *area = fape->Root(); 
+    CAE_TState<TInt> *lbdown = (CAE_TState<TInt>*) area->GetInput("LbDown");
+    CAE_TState<CF_TdPoint> *mcpos = (CAE_TState<CF_TdPoint>*) area->GetInput("McPos");
+
     if (event->button == 1)
     {
-	*farea->iLbDown = (event->type == GDK_BUTTON_PRESS) ? 1: 0;
-	*farea->iMcPos = CF_TdPoint(event->x, event->y);
+	(*lbdown) = (event->type == GDK_BUTTON_PRESS) ? 1: 0;
+	(*mcpos) = CF_TdPoint(event->x, event->y);
     }
     return TRUE;
 }
 
 static gboolean handle_button_release_event(GtkWidget *widget, GdkEventButton *event, gpointer data)
 {
+    CAE_Object *area = fape->Root(); 
+    CAE_TState<TInt> *lbdown = (CAE_TState<TInt>*) area->GetInput("LbDown");
+    CAE_TState<CF_TdPoint> *mcpos = (CAE_TState<CF_TdPoint>*) area->GetInput("McPos");
+
     if (event->button == 1)
     {
-	*farea->iLbDown = (event->type == GDK_BUTTON_RELEASE) ? 0: 1;
-	*farea->iMcPos = CF_TdPoint(event->x, event->y);
+	(*lbdown) = (event->type == GDK_BUTTON_RELEASE) ? 0: 1;
+	(*mcpos) = CF_TdPoint(event->x, event->y);
     }
     return TRUE;
 }
@@ -218,7 +242,9 @@ static gboolean handle_motion_notify_event( GtkWidget *widget, GdkEventMotion *e
 
     if (state)
     {
-	*farea->iMcPos = CF_TdPoint(x, y);
+	CAE_Object *area = fape->Root(); 
+	CAE_TState<CF_TdPoint> *mcpos = (CAE_TState<CF_TdPoint>*) area->GetInput("McPos");
+	(*mcpos) = CF_TdPoint(x, y);
     }
     return TRUE;
 }
@@ -226,12 +252,49 @@ static gboolean handle_motion_notify_event( GtkWidget *widget, GdkEventMotion *e
 static gboolean handle_area_size_allocate_event( GtkWidget *widget, GtkAllocation *allocation, gpointer data)
 {
     gint x, y, width, height, depth;
-//    gdk_window_get_position(iWidget->window, &x, &y);
-//    gdk_drawable_get_size(iWidget->window, &width, &height);
     gdk_window_get_geometry(drawing_area->window, &x, &y, &width, &height, &depth);
     printf("handle_area_size_allocate: x= %d, y= %d, w= %d, h= %d\n", x, y, width, height);
-    *(farea->iRect) = CF_Rect(x, y, x+width, y+height);
-    CF_Rect* nr = (CF_Rect *) farea->iRect->iNew;
-//    printf("new: tx= %d, ty= %d, bx= %d, by= %d\n", nr->iLeftUpper.iX, nr->iLeftUpper.iY, nr->iRightLower.iX, nr->iRightLower.iY);
+    CAE_Object* farea = fape->Root();
+    CAE_TState<CF_Rect>* rect = CAE_TState<CF_Rect>::Interpret(farea->GetInput("Rect"));
+    *(rect) = CF_Rect(x, y, x+width, y+height);
+}
+
+// TODO [YB] Consider UC of "draw" to implement it in CAE style i.e. "within" the objects but not outside 
+// -- According to the current design, there should be supervising state that contain all balls as inputs.
+static void draw_area()
+{
+    int ctx = 0;
+    CAE_Object* farea = fape->Root();
+    CFT_Ball* ball = (CFT_Ball*) farea->GetNextCompByType("ball", &ctx);
+
+    while (ball != NULL)
+    {
+	draw_ball(ball);
+	ball = (CFT_Ball*) farea->GetNextCompByType("ball", &ctx);
+    }
+}
+
+static void draw_ball(CFT_Ball *aBall)
+{
+    CAE_TState<TInt> *srad = (CAE_TState<TInt>*) aBall->GetInput("Rad");
+    CAE_TState<TInt> *smass = (CAE_TState<TInt>*) aBall->GetInput("Mass");
+    CAE_TState<TBool> *smoved = (CAE_TState<TBool> *) aBall->GetInput("Moved");
+    CAE_TState<CF_TdPointF> *scoord = (CAE_TState<CF_TdPointF>*) aBall->GetOutput("Coord");
+
+    int rad = srad->Value();
+    TBool selected = smoved->Value();
+    CF_TdPointF coord = scoord->Value();
+    int mass = smass->Value();
+
+    long centx, centy;
+    centx = coord.iX;
+    centy = coord.iY;
+    TUint8 cblue = 0xff - (mass*0xff)/KBallMassMax;
+    if (cblue < 0)
+	cblue = 0x00;
+    TUint8 cgreen = 0x00;
+    if (selected)
+	cgreen |= 0xff;
+    fapainter->drawBall(CF_TdPoint(centx, centy), rad, CF_TdColor(0x00, cgreen, cblue));
 }
 

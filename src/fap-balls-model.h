@@ -19,13 +19,6 @@
 #include <gdk/gdk.h>
 
 
-// Extended states UID
-const TInt KObUid_CAE_Var_State_TPoint = KObUid_CAE_Var_State_Ext + 1 ;   // tagPOINT 0x00010001
-const TInt KObUid_CAE_Var_State_Point = KObUid_CAE_Var_State_Ext + 2 ;   // CF_TdPoint 0x00010002
-const TInt KObUid_CAE_Var_State_PointF = KObUid_CAE_Var_State_Ext + 3 ;   // CF_TdPointF 0x00010003
-const TInt KObUid_CAE_Var_State_VectF = KObUid_CAE_Var_State_Ext + 4 ;   // CF_TdVectF 0x00010004
-const TInt KObUid_CAE_Var_State_Rect = KObUid_CAE_Var_State_Ext + 5 ;   // CF_Rect 0x00010005
-
 
 // Objects subtypes UIDs
 const TInt KObUid_CAE_Var_Ball =	0x00000001;
@@ -66,15 +59,14 @@ struct CF_Rect
 	CF_TdPoint iRightLower;
 };
 
-//template<> inline TInt CAE_TState<tagPOINT>::DataTypeUid() {return KObUid_CAE_Var_State_TPoint;};
 
-template<> inline TInt CAE_TState<CF_TdPoint>::DataTypeUid() {return KObUid_CAE_Var_State_Point;};
+template<> inline const char* CAE_TState<CF_TdPoint>::Type() {return "StPoint";};
 
-template<> inline TInt CAE_TState<CF_TdPointF>::DataTypeUid() {return KObUid_CAE_Var_State_PointF;};
+template<> inline const char* CAE_TState<CF_TdPointF>::Type() {return "StPointF";};
 
-template<> inline TInt CAE_TState<CF_TdVectF>::DataTypeUid() {return KObUid_CAE_Var_State_VectF;};
+template<> inline const char* CAE_TState<CF_TdVectF>::Type() {return "StVectF";};
 
-template<> inline TInt CAE_TState<CF_Rect>::DataTypeUid() {return KObUid_CAE_Var_State_Rect;};
+template<> inline const char* CAE_TState<CF_Rect>::Type() {return "StVectF";};
 
 
 
@@ -107,7 +99,10 @@ public:
 	virtual ~CFT_Area();
 	void Draw();
 	void AddBallL(float aCoordX,  float aCoordY, TInt aMass, TInt aRad, const char* aName = NULL);
-	void AddBallL(CFT_Ball* aObBall, TBool aUseAreaHook);
+	static void AddBallL(CAE_Object* aObBall, TBool aUseAreaHook);
+	static void LinkBall(CAE_Object* aBallRec, CAE_Object* aBallExt);
+	static CAE_Object* CreateBall(float aCoordX,  float aCoordY, TInt aMass, TInt aRad, const char* aInstName = NULL, TBool aBorder = EFalse);
+	static CFT_Ball* CreateBorder(float aCoordX,  float aCoordY, const char* aInstName, TTransFun aHookUpdate);
 protected:
 	void ConstructL();
 	CAE_TRANS_DEF(UpdateInit, CFT_Area);
@@ -115,10 +110,6 @@ protected:
 	CAE_TRANS_DEF(UpdateBordHookRight, CFT_Area);
 	CAE_TRANS_DEF(UpdateBordHookTop, CFT_Area);
 	CAE_TRANS_DEF(UpdateBordHookBottom, CFT_Area);
-private:
-	static void LinkBall(CFT_Ball* aBallRec, CFT_Ball* aBallExt);
-	CFT_Ball* CreateBall(float aCoordX,  float aCoordY, TInt aMass, TInt aRad, const char* aInstName = NULL, TBool aBorder = EFalse);
-	CFT_Ball* CreateBorder(float aCoordX,  float aCoordY, const char* aInstName, TTransFun aHookUpdate);
 public:
 	MBallAreaWindow*	iBallAreaWnd;
 	CAE_TState<TInt>*	iLbDown;
@@ -150,21 +141,22 @@ public:
 		EObStypeUid = KObUid_CAE_Var_Ball
 	};
 public:
-	static inline TInt ObjectUid(); 
+	static inline const char* Type(); 
 	static CFT_Ball* NewL(const char* aInstName, CAE_Object* aReg, MBallAreaWindow* aBallAreaWnd);
-	CFT_Ball(const char* aInstName, CAE_Object* aMan, MBallAreaWindow* aBallAreaWnd): CAE_Object(aInstName, aMan), iBallAreaWnd(aBallAreaWnd) { iVariantUid = EObStypeUid;}
+	CFT_Ball(const char* aInstName, CAE_Object* aMan, MBallAreaWindow* aBallAreaWnd): CAE_Object(aInstName, aMan), iBallAreaWnd(aBallAreaWnd) {}
 	void Draw();
 //	void VectFLogFun(char* aBuf, CAE_StateBase* aState);
+
+	CAE_TRANS_DEF(UpdateCoord, CFT_Ball);
+	CAE_TRANS_DEF(UpdateVelocity, CFT_Ball);
+	CAE_TRANS_DEF(UpdateSelected, CFT_Ball);
 private:
 	static inline float GetDistance(CF_TdPointF aCoord1, CF_TdPointF aCoord2);
 	// Get projections of ball's velocity
 	static void GetProjOfVel(CF_TdPointF aAngleBeg, CF_TdPointF aAngleEnd, CF_TdVectF aVel, CF_TdVectF& aVelNorm, CF_TdVectF& aVelTang);
-	template <class T> inline static T GetInp(CAE_StateBase* aState, TInt aInd, const char* aName, T& aVal);
+//	template <class T> inline static T GetInp(CAE_StateBase* aState, TInt aInd, const char* aName, T& aVal);
 protected:
 	void ConstructL();
-	CAE_TRANS_DEF(UpdateCoord, CFT_Ball);
-	CAE_TRANS_DEF(UpdateVelocity, CFT_Ball);
-	CAE_TRANS_DEF(UpdateSelected, CFT_Ball);
 public:
 	CAE_TState<CF_TdVectF>*	iInpV;	// Velocity
 	CAE_TState<CF_TdPointF>*	iCoord;
@@ -188,12 +180,12 @@ private:
 };
 
 // Embedded to the class definition for VC 6.0 only to avoid C2893 error
-template <class T> inline T CFT_Ball::GetInp(CAE_StateBase* aState, TInt aInd, const char* aName, T& aVal)
+template <class T> inline T GetInp(CAE_StateBase* aState, TInt aInd, const char* aName, T& aVal)
 {
     CAE_StateBase* state = aState->Input(aInd);
     // Check if the structure of inputs is correct
     _FAP_ASSERT(strcmp(state->InstName(), aName) == 0);
-    CAE_TState<T> *tstate = state->GetObject(tstate);
+    CAE_TState<T> *tstate = state->GetFbObj(tstate);
     _FAP_ASSERT(tstate != NULL);
     aVal = tstate->Value();
     return aVal;
@@ -201,7 +193,7 @@ template <class T> inline T CFT_Ball::GetInp(CAE_StateBase* aState, TInt aInd, c
 
 
 
-inline TInt CFT_Ball::ObjectUid() { return EObUid | EObStypeUid;} 
+inline const char* CFT_Ball::Type() { return "Ball";} 
 
 inline float CFT_Ball:: GetDistance(CF_TdPointF aCoord1, CF_TdPointF aCoord2)
 {
@@ -219,12 +211,11 @@ public:
 
 public:
 	static CFT_Border* NewL(const char* aInstName, CAE_Object* aMan, MBallAreaWindow* aBallAreaWnd);
-	CFT_Border(const char* aInstName, CAE_Object* aMan, MBallAreaWindow* aBallAreaWnd):  
-	    CFT_Ball(aInstName, aMan, aBallAreaWnd) { iVariantUid = EObStypeUid;} 
-	static inline TInt ObjectUid(); 
+	CFT_Border(const char* aInstName, CAE_Object* aMan, MBallAreaWindow* aBallAreaWnd):  CFT_Ball(aInstName, aMan, aBallAreaWnd) {} 
+	static inline const char* Type(); 
 };
 
-inline TInt CFT_Border::ObjectUid() { return EObUid | EObStypeUid;} 
+inline const char* CFT_Border::Type() { return "Border";} 
 
 #endif // __FAPTSOB_DEF_
 
