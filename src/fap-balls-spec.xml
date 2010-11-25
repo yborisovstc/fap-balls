@@ -4,6 +4,7 @@
 
 <!DOCTYPE  caeenv SYSTEM "/home/yborisov/projects/fap/git/fapws/src/objspec.dtd" > 
 
+<!-- TODO [YB] It is to hard to specify the balls in the ares, especially to link them. We need to ball factory within the area -->
 
 <caeenv>
     <object type="area" id="Area" quiet="yes">
@@ -34,6 +35,8 @@
 		<inp id="Coord.*"/> <inp id="Mass.*"/> <inp id="Rad.*"/> <inp id="Transp.*"/> <inp id="InpV.*"/>
 	    </state>
 
+	    <!-- TODO [YB] McPos is used in borded not as mouse but as area rect. Consider renaming the state -->
+	    <!-- Current position of mouse -->
 	    <state type="StPoint" id="McPos"  access="Inp" init="0"> 
 		<logspec event="upd"> <logdata id="new"/> </logspec> 
 		<inp id="McPos"/> 
@@ -67,11 +70,21 @@
 
 	</object> <!-- ball -->
 
+	<!-- Area Initializer. It does second phase creation of area - creates borders -->
+	<object type="none" id="Area_Initializer">
 
-	<object type="ball" id="ball_1"> <state mut="Change" id="Mass" init="200"/> <state mut="Change" id="Coord" init="(200,500"/> </object>
-	<!--
-	<object type="ball" id="ball_2"> <state mut="Change" id="Mass" init="50"/> <state mut="Change" id="Coord" init="(400,300"/> </object>
-	-->
+	    <state type="StInt" id="Borders_count" access="Reg" transf="trans_borders_count" init="0">
+		<logspec event="tran"> <logdata id="dep"/> </logspec> 
+		<!-- Counts the borders created -->
+		<!-- Rectangle of the area. It uses to create borders matching the rectangle -->
+		<inp id="Rect"/> <inp id="Self"/> 
+	    </state>
+	</object>
+
+
+	<object type="ball" id="ball_1"> <state mut="Change" id="Mass" init="500"/> <state mut="Change" id="Rad" init="40"/> 
+	    <state mut="Change" id="Coord" init="(50,50)"/> </object>
+	<object type="ball" id="ball_2"> <state mut="Change" id="Mass" init="50"/> <state mut="Change" id="Coord" init="(100,100"/> </object>
 
 	<state type="StRect" id="Rect" access="Inp" init="0">
 	    <logspec event="upd"> <logdata id="new"/> </logspec> </state>
@@ -83,24 +96,23 @@
 	    <logspec event="upd"> <logdata id="new"/> </logspec> </state>
 
 	<!-- Ball_1 connections -->
-	<!--
 	<conn state="ball_1.Coord"> <dep inp="Coord.0" conn="ball_2.Coord"/> <dep inp="Rad.0" conn="ball_2.Rad"/> <dep inp="Transp.0" conn="ball_2.Transp"/>
 	    <dep inp="InpV.0" conn="ball_2.InpV"/></conn>
 	<conn state="ball_1.InpV"> <dep inp="Coord.0" conn="ball_2.Coord"/> <dep inp="Rad.0" conn="ball_2.Rad"/> <dep inp="Transp.0" conn="ball_2.Transp"/>
 	    <dep inp="InpV.0" conn="ball_2.InpV"/> <dep inp="Mass.0" conn="ball_2.Mass"/> </conn>
-	-->
 	<conn state="ball_1.LbDown"> <dep inp="LbDown" conn="LbDown"/></conn>
 	<conn state="ball_1.McPos"> <dep inp="McPos" conn="McPos"/></conn>
 
 	<!-- Ball_2 connections -->
-	<!--
 	<conn state="ball_2.Coord"> <dep inp="Coord.0" conn="ball_1.Coord"/> <dep inp="Rad.0" conn="ball_1.Rad"/> <dep inp="Transp.0" conn="ball_1.Transp"/>
 	    <dep inp="InpV.0" conn="ball_1.InpV"/></conn>
 	<conn state="ball_2.InpV"> <dep inp="Coord.0" conn="ball_1.Coord"/> <dep inp="Rad.0" conn="ball_1.Rad"/> <dep inp="Transp.0" conn="ball_1.Transp"/>
 	    <dep inp="InpV.0" conn="ball_1.InpV"/> <dep inp="Mass.0" conn="ball_1.Mass"/> </conn>
 	<conn state="ball_2.LbDown"> <dep inp="LbDown" conn="LbDown"/></conn>
 	<conn state="ball_2.McPos"> <dep inp="McPos" conn="McPos"/></conn>
-	-->
+
+	<!-- -->
+	<conn state="Area_Initializer.Borders_count"> <dep inp="Rect" conn="Rect"/> <dep inp="Self" dep="Area_Initializer.Borders_count"/></conn>
 
     </object> <!-- area -->
 </caeenv>

@@ -7,11 +7,20 @@
 #include "fap-balls-model.h"
 
 
+static void UpdateBordersCount(CAE_Object* aObject, CAE_State* aState);
 
 const TTransInfo KTinfo_Update_coord = TTransInfo(CFT_Ball::UpdateCoord_S_, "trans_coord");
 const TTransInfo KTinfo_Update_velocity = TTransInfo(CFT_Ball::UpdateVelocity_S_, "trans_inpv");
 const TTransInfo KTinfo_Update_moved = TTransInfo(CFT_Ball::UpdateSelected_S_, "trans_moved");
-const TTransInfo* tinfos[] = {&KTinfo_Update_coord, &KTinfo_Update_velocity, &KTinfo_Update_moved, NULL};
+const TTransInfo KTinfo_Update_borders_count = TTransInfo(UpdateBordersCount, "trans_borders_count");
+
+// Transition functions register
+const TTransInfo* tinfos[] = {
+    &KTinfo_Update_coord, 
+    &KTinfo_Update_velocity, 
+    &KTinfo_Update_moved, 
+    &KTinfo_Update_borders_count,
+    NULL};
 
 const TStateInfo KSinfo_Point = TStateInfo("StPoint", (TStateFactFun) CAE_TState<CF_TdPoint>::NewL );
 const TStateInfo KSinfo_PointF = TStateInfo("StPointF", (TStateFactFun) CAE_TState<CF_TdPointF>::NewL );
@@ -154,6 +163,10 @@ int main(int argc, char *argv[])
     gint x, y, width, height, depth;
     gdk_window_get_geometry(drawing_area->window, &x, &y, &width, &height, &depth);
     CF_Rect rect = CF_Rect(x, y, x+width, y+height);
+    CAE_Object* farea = fape->Root();
+    CAE_TState<CF_Rect>* srect = (CAE_TState<CF_Rect>*) farea->GetInput("Rect");
+    *srect = CF_Rect(x, y, x+width, y+height);
+    srect->Confirm();
     /* Create 2d area */
 //    farea = CFT_Area::NewL(KFAreaName, NULL, fapainter, &rect);
 //    fape->AddL(farea);
@@ -182,6 +195,7 @@ gboolean idle_event_handler(gpointer data)
     {
 	fape->Step();
     }
+    return ETrue;
 }
 
 static gboolean delete_event_handler(GtkWidget *widget, GdkEvent *event, gpointer data)
@@ -255,8 +269,9 @@ static gboolean handle_area_size_allocate_event( GtkWidget *widget, GtkAllocatio
     gdk_window_get_geometry(drawing_area->window, &x, &y, &width, &height, &depth);
     printf("handle_area_size_allocate: x= %d, y= %d, w= %d, h= %d\n", x, y, width, height);
     CAE_Object* farea = fape->Root();
-    CAE_TState<CF_Rect>* rect = CAE_TState<CF_Rect>::Interpret(farea->GetInput("Rect"));
-    *(rect) = CF_Rect(x, y, x+width, y+height);
+    CAE_TState<CF_Rect>* srect = (CAE_TState<CF_Rect>*) farea->GetInput("Rect");
+    *srect = CF_Rect(x, y, x+width, y+height);
+    srect->Confirm();
 }
 
 // TODO [YB] Consider UC of "draw" to implement it in CAE style i.e. "within" the objects but not outside 
@@ -296,5 +311,28 @@ static void draw_ball(CFT_Ball *aBall)
     if (selected)
 	cgreen |= 0xff;
     fapainter->drawBall(CF_TdPoint(centx, centy), rad, CF_TdColor(0x00, cgreen, cblue));
+}
+
+static void UpdateBordersCount(CAE_Object* aObject, CAE_State* aState)
+{
+    const TInt KBorderRadius = 50000;
+
+    CAE_TState<TInt> *sself = (CAE_TState<TInt>*) aState;
+    CAE_TState<CF_Rect> *srect = (CAE_TState<CF_Rect>*) aState->Input("Rect");
+
+    // TODO [YB] Implement one shot by detaching inputs
+    if (~*sself == 0 ) {
+	// Create borders
+	CF_Rect rt = ~*srect;
+	float midx, midy;
+	midx = (rt.iRightLower.iX - rt.iLeftUpper.iX)/2.0;
+	midy = (rt.iRightLower.iY - rt.iLeftUpper.iY)/2.0;
+	printf("area_constr: lx= %d, ly= %d, rx= %d, ry= %d\n", rt.iLeftUpper.iX, rt.iLeftUpper.iY, rt.iRightLower.iX, rt.iRightLower.iY);
+	CFT_Area::CreateBorder(rt.iLeftUpper.iX-KBorderRadius, midy, "Border_Left", CAE_TRANS(CFT_Area::UpdateBordHookLeft));	
+	CFT_Area::CreateBorder(rt.iRightLower.iX + KBorderRadius, midy, "Border_Right", CAE_TRANS(CFT_Area::UpdateBordHookRight));	
+	CFT_Area::CreateBorder(midx, rt.iLeftUpper.iY - KBorderRadius, "Border_Top", CAE_TRANS(CFT_Area::UpdateBordHookTop));	
+	CFT_Area::CreateBorder(midx, rt.iRightLower.iY + KBorderRadius, "Border_Bottom", CAE_TRANS(CFT_Area::UpdateBordHookBottom));	
+	*sself = ~*sself + 1;
+    }
 }
 

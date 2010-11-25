@@ -210,24 +210,44 @@ CAE_Object* CFT_Area::CreateBall(float aCoordX,  float aCoordY, TInt aMass, TInt
 	sprintf(name, KBallName, area->CountCompWithType("Ball") + 1);
     }
     CAE_Object* ball = (CAE_Object *) area->FindByName("ball");
+    // TODO [YB] To consider if any transf can be able to add element to area
     CAE_Object* newball = ball->CreateNewL(NULL, name, area);
 
     CF_TdPointF coord = {aCoordX, aCoordY};
 
     CAE_TState<TInt> *srad = (CAE_TState<TInt>*) newball->GetInput("Rad");
-    CAE_TState<CF_TdPointF> *scoord = (CAE_TState<CF_TdPointF>*) newball->GetInput("Coord");
+    CAE_TState<CF_TdPointF> *scoord = (CAE_TState<CF_TdPointF>*) newball->GetOutput("Coord");
     CAE_TState<TInt> *smass = (CAE_TState<TInt>*) newball->GetInput("Mass");
 
     *srad = aRad;
     *scoord= coord;
     *smass = aMass;
-    AddBallL(ball, !aBorder);
-    return ball;
+    // Confirm states new values because newly created ball can be updated this tick and new values will be lost
+    // TODO [YB] Consider this situation. It is not obvious for developers
+    srad->Confirm();
+    scoord->Confirm();
+    smass->Confirm();
+    AddBallL(newball, !aBorder);
+    return newball;
 }
 
 CFT_Ball* CFT_Area::CreateBorder(float aCoordX,  float aCoordY, const char* aInstName, TTransFun aHookUpdate)
 {
     CAE_Object *bord = CreateBall(aCoordX, aCoordY, KBorderMass, KBorderRadius, aInstName, ETrue);	
+    CAE_TState<TBool> *shookedperm = (CAE_TState<TBool>*) bord->GetInput("HookedPerm");
+    CAE_TState<TBool> *stransp = (CAE_TState<TBool>*) bord->GetInput("Transp");
+
+    CAE_Object* farea = fape->Root();
+    CAE_TState<CF_Rect>* srect = (CAE_TState<CF_Rect>*) farea->GetInput("Rect");
+    _FAP_ASSERT(srect != NULL);
+    CAE_TState<CF_TdPoint> *smcpos = (CAE_TState<CF_TdPoint> *) bord->GetInput("McPos");
+//    farea->LinkL(smcpos, srect, aHookUpdate);
+    smcpos->SetInputL("McPos", srect);
+    smcpos->SetTrans(TTransInfo(aHookUpdate));
+    *shookedperm = TRUE;
+    *stransp = TRUE;
+    shookedperm->Confirm();
+    stransp->Confirm();
 #if 0
     // Bind hook of the border with area rectangle
     LinkL(bord->iMcPos, iRect, aHookUpdate);
@@ -240,24 +260,24 @@ CFT_Ball* CFT_Area::CreateBorder(float aCoordX,  float aCoordY, const char* aIns
 void CFT_Area::LinkBall(CAE_Object* aBallRec, CAE_Object* aBallExt)
 {
     CAE_TState<CF_TdVectF> *s_vel = (CAE_TState<CF_TdVectF> *) aBallRec->GetInput("InpV");
-    CAE_TState<CF_TdPointF> *s_coord = (CAE_TState<CF_TdPointF> *) aBallRec->GetInput("Coord");
+    CAE_TState<CF_TdPointF> *s_coord = (CAE_TState<CF_TdPointF> *) aBallRec->GetOutput("Coord");
 
-    CAE_TState<CF_TdPointF> *se_coord = (CAE_TState<CF_TdPointF> *) aBallExt->GetInput("Coord");
+    CAE_TState<CF_TdPointF> *se_coord = (CAE_TState<CF_TdPointF> *) aBallExt->GetOutput("Coord");
     CAE_TState<TInt> *se_mass = (CAE_TState<TInt> *) aBallExt->GetInput("Mass");
     CAE_TState<TInt> *se_rad = (CAE_TState<TInt>*) aBallExt->GetInput("Rad");
     CAE_TState<CF_TdVectF> *se_vel = (CAE_TState<CF_TdVectF> *) aBallExt->GetInput("InpV");
     CAE_TState<TBool> *se_transp = (CAE_TState<TBool>*) aBallExt->GetInput("Transp");
 
-    s_vel->SetInputL("CoordS", se_coord);
-    s_vel->SetInputL("MassS", se_mass);
-    s_vel->SetInputL("RadS", se_rad);
-    s_vel->SetInputL("InpVS", se_vel);
-    s_vel->SetInputL("TranspS", se_transp);
+    s_vel->AddExtInputL("Coord", se_coord);
+    s_vel->AddExtInputL("Mass", se_mass);
+    s_vel->AddExtInputL("Rad", se_rad);
+    s_vel->AddExtInputL("InpV", se_vel);
+    s_vel->AddExtInputL("Transp", se_transp);
 
-    s_coord->SetInputL("CoordS", se_coord);
-    s_coord->SetInputL("RadS", se_rad);
-    s_coord->SetInputL("InpVS", se_vel);
-    s_coord->SetInputL("TranspS", se_transp);
+    s_coord->AddExtInputL("Coord", se_coord);
+    s_coord->AddExtInputL("Rad", se_rad);
+    s_coord->AddExtInputL("InpV", se_vel);
+    s_coord->AddExtInputL("Transp", se_transp);
 }
 
 void CFT_Area::AddBallL(float aCoordX,  float aCoordY, TInt aMass, TInt aRad, const char* aName)
@@ -265,6 +285,7 @@ void CFT_Area::AddBallL(float aCoordX,  float aCoordY, TInt aMass, TInt aRad, co
     CreateBall(aCoordX, aCoordY, aMass, aRad, aName);
 }
 
+// TODO [YB] Why any transf can have access to any env elements?
 void CFT_Area::AddBallL(CAE_Object* aObBall, TBool aUseAreaHook)
 {
     CAE_Object *area = fape->Root(); 
@@ -275,9 +296,9 @@ void CFT_Area::AddBallL(CAE_Object* aObBall, TBool aUseAreaHook)
     CAE_TState<CF_TdPoint> *sball_mcpos = (CAE_TState<CF_TdPoint>*) aObBall->GetInput("McPos");
     CAE_TState<CF_TdPoint> *sarea_mcpos = (CAE_TState<CF_TdPoint>*) area->GetInput("McPos");
 
-    sball_lbdown->SetInputL("LbDownS", sarea_lbdown); 
+    sball_lbdown->SetInputL("LbDown", sarea_lbdown); 
     if (aUseAreaHook)
-	sball_mcpos->SetInputL("McPosS", sarea_mcpos); 
+	sball_mcpos->SetInputL("McPos", sarea_mcpos); 
     int ctx = 0;
     CAE_Object* ball = (CAE_Object*) area->GetNextCompByType("ball", &ctx);
     while (ball != NULL)
@@ -331,9 +352,9 @@ void CFT_Area::UpdateBordHookLeft(CAE_State* aState)
 {
     //printf("UpdateBordHookLeft: name = %s\n", aState->InstName());
     CAE_TState<CF_TdPoint> *self = (CAE_TState<CF_TdPoint> *) aState;
-    CAE_TState<CF_Rect> *arectst = (CAE_TState<CF_Rect> *) self->Input(KAreaRectName);
-    g_assert(arectst != NULL);
-    const CF_Rect arect = arectst->Value();
+    CAE_TState<CF_Rect> *sarect = (CAE_TState<CF_Rect> *) aState->Input("McPos");
+    g_assert(sarect != NULL);
+    const CF_Rect arect = sarect->Value();
     float midx, midy;
     midx = (arect.iRightLower.iX - arect.iLeftUpper.iX)/2.0;
     midy = (arect.iRightLower.iY - arect.iLeftUpper.iY)/2.0;
@@ -344,9 +365,9 @@ void CFT_Area::UpdateBordHookRight(CAE_State* aState)
 {
     //printf("UpdateBordHookRight: name = %s\n", aState->InstName());
     CAE_TState<CF_TdPoint> *self = (CAE_TState<CF_TdPoint> *) aState;
-    CAE_TState<CF_Rect> *arectst = (CAE_TState<CF_Rect> *) self->Input(KAreaRectName);
-    g_assert(arectst != NULL);
-    const CF_Rect arect = arectst->Value();
+    CAE_TState<CF_Rect> *sarect = (CAE_TState<CF_Rect> *) self->Input("McPos");
+    g_assert(sarect != NULL);
+    const CF_Rect arect = sarect->Value();
     float midx, midy;
     midx = (arect.iRightLower.iX - arect.iLeftUpper.iX)/2.0;
     midy = (arect.iRightLower.iY - arect.iLeftUpper.iY)/2.0;
@@ -357,9 +378,9 @@ void CFT_Area::UpdateBordHookTop(CAE_State* aState)
 {
     //printf("UpdateBordHookRight: name = %s\n", aState->InstName());
     CAE_TState<CF_TdPoint> *self = (CAE_TState<CF_TdPoint> *) aState;
-    CAE_TState<CF_Rect> *arectst = (CAE_TState<CF_Rect> *) self->Input(KAreaRectName);
-    g_assert(arectst != NULL);
-    const CF_Rect arect = arectst->Value();
+    CAE_TState<CF_Rect> *sarect = (CAE_TState<CF_Rect> *) self->Input("McPos");
+    g_assert(sarect != NULL);
+    const CF_Rect arect = sarect->Value();
     float midx, midy;
     midx = (arect.iRightLower.iX - arect.iLeftUpper.iX)/2.0;
     midy = (arect.iRightLower.iY - arect.iLeftUpper.iY)/2.0;
@@ -370,9 +391,9 @@ void CFT_Area::UpdateBordHookBottom(CAE_State* aState)
 {
     //printf("UpdateBordHookRight: name = %s\n", aState->InstName());
     CAE_TState<CF_TdPoint> *self = (CAE_TState<CF_TdPoint> *) aState;
-    CAE_TState<CF_Rect> *arectst = (CAE_TState<CF_Rect> *) self->Input(KAreaRectName);
-    g_assert(arectst != NULL);
-    const CF_Rect arect = arectst->Value();
+    CAE_TState<CF_Rect> *sarect = (CAE_TState<CF_Rect> *) self->Input("McPos");
+    g_assert(sarect != NULL);
+    const CF_Rect arect = sarect->Value();
     float midx, midy;
     midx = (arect.iRightLower.iX - arect.iLeftUpper.iX)/2.0;
     midy = (arect.iRightLower.iY - arect.iLeftUpper.iY)/2.0;
@@ -729,6 +750,9 @@ void CFT_Ball::UpdateVelocity(CAE_State* aState)
 	    float r = GetDistance(newcoord, newexcoord);
 	    if (r <= (currad + exrad))
 	    {
+		// TODO [YB] There can be that balls collisioned initially for instance when
+		// ball is "inside" border. In this case balls cannot be moved outside even by the hook
+		// if velocity is 0. It should be allowed to hook it out
 		printf("CFT_Ball::UpdateVelocity: r: %f, currad: %d, exrad: %d\n", r, currad, exrad);
 		// Get the projections of interacting balls
 		CF_TdVectF curvel_norm, curvel_tang, exvel_norm, exvel_tang;

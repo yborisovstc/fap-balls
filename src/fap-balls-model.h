@@ -103,7 +103,6 @@ public:
 	static void LinkBall(CAE_Object* aBallRec, CAE_Object* aBallExt);
 	static CAE_Object* CreateBall(float aCoordX,  float aCoordY, TInt aMass, TInt aRad, const char* aInstName = NULL, TBool aBorder = EFalse);
 	static CFT_Ball* CreateBorder(float aCoordX,  float aCoordY, const char* aInstName, TTransFun aHookUpdate);
-protected:
 	void ConstructL();
 	CAE_TRANS_DEF(UpdateInit, CFT_Area);
 	CAE_TRANS_DEF(UpdateBordHookLeft, CFT_Area);
