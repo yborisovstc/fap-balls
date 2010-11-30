@@ -3,16 +3,21 @@
  */
 
 #include <gtk/gtk.h>
+#include <stdlib.h>
 #include <fapext.h>
 #include "fap-balls-model.h"
 
 
 static void UpdateBordersCount(CAE_Object* aObject, CAE_State* aState);
+static void UpdateBallCreationStart(CAE_Object* aObject, CAE_State* aState);
+static void UpdateBallCreationReady(CAE_Object* aObject, CAE_State* aState);
 
 const TTransInfo KTinfo_Update_coord = TTransInfo(CFT_Ball::UpdateCoord_S_, "trans_coord");
 const TTransInfo KTinfo_Update_velocity = TTransInfo(CFT_Ball::UpdateVelocity_S_, "trans_inpv");
 const TTransInfo KTinfo_Update_moved = TTransInfo(CFT_Ball::UpdateSelected_S_, "trans_moved");
 const TTransInfo KTinfo_Update_borders_count = TTransInfo(UpdateBordersCount, "trans_borders_count");
+const TTransInfo KTinfo_Update_ball_creation_ready = TTransInfo(UpdateBallCreationReady, "trans_ball_creation_ready");
+const TTransInfo KTinfo_Update_ball_creation_start = TTransInfo(UpdateBallCreationStart, "trans_ball_creation_start");
 
 // Transition functions register
 const TTransInfo* tinfos[] = {
@@ -20,6 +25,8 @@ const TTransInfo* tinfos[] = {
     &KTinfo_Update_velocity, 
     &KTinfo_Update_moved, 
     &KTinfo_Update_borders_count,
+    &KTinfo_Update_ball_creation_ready,
+    &KTinfo_Update_ball_creation_start,
     NULL};
 
 const TStateInfo KSinfo_Point = TStateInfo("StPoint", (TStateFactFun) CAE_TState<CF_TdPoint>::NewL );
@@ -29,6 +36,8 @@ const TStateInfo KSinfo_Rect = TStateInfo("StRect", (TStateFactFun) CAE_TState<C
 const TStateInfo* sinfos[] = {&KSinfo_Point, &KSinfo_PointF, &KSinfo_VectF, &KSinfo_Rect, NULL};
 
 const TInt KBallMassMax = 1000;
+
+GdkGC *gr_cont;
 
 class CFT_BArrea_Painter: public MBallAreaWindow
 {
@@ -49,8 +58,10 @@ void CFT_BArrea_Painter::redraw(CF_TdPoint aCenter, TInt aRadius, TBool aErase)
     rect.y = aCenter.iY-aRadius; if (rect.y < 0) rect.y = 0;
     rect.width = aRadius * 2.0;
     rect.height = aRadius * 2.0;
-    if (aErase)
-	gdk_window_clear_area(iWidget->window, rect.x, rect.y, rect.width, rect.height);
+    // [YB] Ball draw jitters when use clearing old ball, but it works ok when commented the code below, why?
+    // Seems that dgk clears rect immediatelly but the ball drawn some later on expose event
+//    if (aErase)
+//	gdk_window_clear_area(iWidget->window, rect.x, rect.y, rect.width, rect.height);
     gdk_window_invalidate_rect(iWidget->window, &rect, TRUE);
 }
 
@@ -64,7 +75,8 @@ void CFT_BArrea_Painter::drawBall(CF_TdPoint aCenter, TInt aRadius, CF_TdColor a
     GdkGC *gc;
     //gc = iWidget->style->fg_gc[GTK_WIDGET_STATE (iWidget)];
     //gdk_gc_copy(gc, iWidget->style->fg_gc[GTK_WIDGET_STATE (iWidget)]);
-    gc = gdk_gc_new(iWidget->window); 
+//    gc = gdk_gc_new(iWidget->window); 
+    gc = gr_cont;
     GdkColor color;
     gboolean res = FALSE;
     //res = gdk_colormap_alloc_color(gtk_widget_get_colormap(iWidget), &color, FALSE, TRUE); 
@@ -173,6 +185,7 @@ int main(int argc, char *argv[])
 
     gtk_widget_show(main_window);
     gtk_widget_show(drawing_area);
+    gr_cont = gdk_gc_new(drawing_area->window); 
 
     /* Use idle of main loop to drive FAP environment */
     g_timeout_add(KFapeTimeSlice, idle_event_handler, NULL);
@@ -313,6 +326,7 @@ static void draw_ball(CFT_Ball *aBall)
     fapainter->drawBall(CF_TdPoint(centx, centy), rad, CF_TdColor(0x00, cgreen, cblue));
 }
 
+// TODO [YB] To migrate to using object proxy instead of direct access to area
 static void UpdateBordersCount(CAE_Object* aObject, CAE_State* aState)
 {
     const TInt KBorderRadius = 50000;
@@ -336,3 +350,37 @@ static void UpdateBordersCount(CAE_Object* aObject, CAE_State* aState)
     }
 }
 
+static void UpdateBallCreationReady(CAE_Object* aObject, CAE_State* aState)
+{
+    CAE_TState<TBool> *sself = (CAE_TState<TBool>*) aState;
+    CAE_TState<TBool> *sready= (CAE_TState<TBool>*) aState->Input("Ready");
+    CAE_TState<TBool> *sstart= (CAE_TState<TBool>*) aState->Input("Start");
+    CAE_TState<CF_TdPointF> *scoord = (CAE_TState<CF_TdPointF>*) aState->Input("Coord");
+    CAE_TState<TInt> *smass= (CAE_TState<TInt>*) aState->Input("Mass");
+    CAE_TState<TUint32> *srad= (CAE_TState<TUint32>*) aState->Input("Rad");
+    _FAP_ASSERT(sself && sready && sstart && scoord && smass && srad);
+    if (~*sstart && ~*sself) {
+	CF_TdPointF coord = ~*scoord;
+	TInt mass = ~*smass;
+	TUint32 rad = ~*srad;
+	int num = rand();
+	char *name = (char*) malloc(100);
+	sprintf(name, "ball_%d", num);
+	CFT_Area::CreateBall(coord.iX,  coord.iY, mass, rad, name);
+	free(name);
+	*sself = EFalse;
+    }	
+    else if (!~*sstart) {
+	*sself = ETrue;
+    }
+}
+
+static void UpdateBallCreationStart(CAE_Object* aObject, CAE_State* aState)
+{
+    CAE_TState<TBool> *sself = (CAE_TState<TBool>*) aState;
+    CAE_TState<TBool> *sready= (CAE_TState<TBool>*) aState->Input("Ready");
+    _FAP_ASSERT(sself && sready);
+    if (~*sready) {
+	*sself = EFalse;
+    }
+}

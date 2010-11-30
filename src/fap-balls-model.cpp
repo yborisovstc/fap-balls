@@ -65,6 +65,8 @@ const TInt KBallVelExtInputsBase = 6;
 // The base of ind of external inputs of ball's coordinates
 const TInt KBallCoordExtInputsBase = 5;
 
+// Force of extrusion while superposition
+const TInt KForceOfExtrs = 20;
 
 extern CAE_Env* fape;
 /* Area painter */
@@ -536,6 +538,7 @@ void CFT_Ball::UpdateCoord(CAE_State* aState)
 #endif
 	}
 	//
+	
 	// Check if there will be some collision at the next update
 	for (TInt i = 0; ; i++) 
 	{
@@ -554,7 +557,10 @@ void CFT_Ball::UpdateCoord(CAE_State* aState)
 	    newexcoord.iX = excoord.iX + exvel.iX;
 	    newexcoord.iY = excoord.iY + exvel.iY;
 	    float r = GetDistance(newcoord, newexcoord);
-	    if ((r <= (rad + exrad)) && !(transp && extransp))
+	    float curdis = GetDistance(coord, excoord);
+	    TBool superpos = ((curdis < rad + exrad) && !transp);
+	    // If there is no superposition, and collistion happens, fix coord
+	    if (!superpos && ((r <= (rad + exrad)) && !(transp && extransp)))
 	    {
 		// Collision will happen next tick
 		newcoord.iX = coord.iX;
@@ -635,6 +641,7 @@ void CFT_Ball::UpdateVelocity(CAE_State* aState)
     
     CF_TdVectF vforce = {0.0, 0.0};
     CF_TdVectF newvel = {0.0, 0.0};
+
     TInt i = 0;
     //printf("CFT_Ball::UpdateVelocity: %s, mass: %d, currad, %d, coord: %f^%f\n", InstName(), curmass, currad, curcoord.iX, curcoord.iY);
     //
@@ -687,10 +694,12 @@ void CFT_Ball::UpdateVelocity(CAE_State* aState)
 	if (sexcoord == NULL) break;
 	CAE_TState<TInt> *sexmass = (CAE_TState<TInt> *) aState->Input("Mass", i);
 	CAE_TState<TInt> *sexrad = (CAE_TState<TInt>*) aState->Input("Rad", i);
+	CAE_TState<TBool> *sextransp = (CAE_TState<TBool>*) aState->Input("Transp", i);
 
 	CF_TdPointF excoord = ~*sexcoord;
 	TInt exmass = ~*sexmass;
 	TInt exrad = ~*sexrad;
+	TBool extransp = ~*sextransp;
 
 	if (exmass != 0)
 	{
@@ -700,6 +709,11 @@ void CFT_Ball::UpdateVelocity(CAE_State* aState)
 	    {
 		vforce.iX += ((excoord.iX - curcoord.iX)*force)/r;
 		vforce.iY += ((excoord.iY - curcoord.iY)*force)/r;
+	    }
+	    else if (!transp) {
+		// Superposition
+		vforce.iX = (r == 0.0) ? - KForceOfExtrs : -((excoord.iX - curcoord.iX)*KForceOfExtrs)/r;
+		vforce.iY = (r == 0.0) ? - KForceOfExtrs : -((excoord.iY - curcoord.iY)*KForceOfExtrs)/r;
 	    }
 	}
     }
@@ -748,8 +762,13 @@ void CFT_Ball::UpdateVelocity(CAE_State* aState)
 	    newexcoord.iX = excoord.iX + exvel.iX;
 	    newexcoord.iY = excoord.iY + exvel.iY;
 	    float r = GetDistance(newcoord, newexcoord);
-	    if (r <= (currad + exrad))
+	    float curdis = GetDistance(curcoord, excoord);
+	    if (curdis <= (currad + exrad)) {
+		// Superposition
+	    }
+	    else if (r < (currad + exrad))
 	    {
+		// Collistion
 		// TODO [YB] There can be that balls collisioned initially for instance when
 		// ball is "inside" border. In this case balls cannot be moved outside even by the hook
 		// if velocity is 0. It should be allowed to hook it out

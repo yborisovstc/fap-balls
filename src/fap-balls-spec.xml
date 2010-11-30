@@ -72,19 +72,74 @@
 
 	<!-- Area Initializer. It does second phase creation of area - creates borders -->
 	<object type="none" id="Area_Initializer">
-
 	    <state type="StInt" id="Borders_count" access="Reg" transf="trans_borders_count" init="0">
+		<!--
 		<logspec event="tran"> <logdata id="dep"/> </logspec> 
+		-->
 		<!-- Counts the borders created -->
 		<!-- Rectangle of the area. It uses to create borders matching the rectangle -->
 		<inp id="Rect"/> <inp id="Self"/> 
 	    </state>
 	</object>
 
+	<!-- Ball creator. Creates the ball and adds it to area 
+	     Inputs Coord, Mass, Rad - parameters of the created ball
+	     Ready - status of ball creation
+	     -->
+	<object type="none" id="Ball_creator" quiet="yes">
+	    <state type="StPointF" id="Coord"  access="Inp" init="(0,0)"> </state>
+	    <state type="StInt" id="Mass"  access="Inp" init="100"> </state>
+	    <state type="StUint32" id="Rad"  access="Inp" init="30"> </state>
+	    <state type="StBool" id="Start"  access="Inp" transf="trans_ball_creation_start" init="0"> 
+		<inp id="Ready"/> 
+	    </state>
+	    <state type="StBool" id="Ready"  access="Out" transf="trans_ball_creation_ready" init="1"> 
+		<logspec event="tran"> <logdata id="dep"/> </logspec> 
+		<logspec event="upd"> <logdata id="new"/> </logspec> 
+		<inp id="Ready"/> 
+		<inp id="Start"/> 
+		<inp id="Coord"/> 
+		<inp id="Mass"/> 
+		<inp id="Rad"/>
+	    </state>
+
+	    <conn state="Start">
+		<dep inp="Ready" conn="Ready"/>
+	    </conn>
+
+	    <conn state="Ready">
+		<dep inp="Ready" conn="Ready"/>
+		<dep inp="Start" conn="Start"/>
+		<dep inp="Coord" conn="Coord"/>
+		<dep inp="Mass" conn="Mass"/>
+		<dep inp="Rad" conn="Rad"/>
+	    </conn>
+	</object> <!-- Ball_creator -->
 
 	<object type="ball" id="ball_1"> <state mut="Change" id="Mass" init="500"/> <state mut="Change" id="Rad" init="40"/> 
 	    <state mut="Change" id="Coord" init="(50,50)"/> </object>
-	<object type="ball" id="ball_2"> <state mut="Change" id="Mass" init="50"/> <state mut="Change" id="Coord" init="(100,100"/> </object>
+
+	<object type="ball" id="ball_2"> <state mut="Change" id="Mass" init="200"/> <state mut="Change" id="Rad" init="30"/> 
+	    <state mut="Change" id="Coord" init="(50,50)"/> </object>
+
+	<!--
+	<object type="Ball_creator" id="ball_creator_1" >
+	    <state mut="Change" id="Coord" init="(110, 30)"/>
+	    <state mut="Change" id="Mass" init="40"/>
+	    <state mut="Change" id="Rad" init="20"/>
+	    <state mut="Change" id="Start" init="1"/>
+	</object>
+	-->
+
+	<!--
+	<object type="Ball_creator" id="ball_creator_2" >
+	    <state mut="Change" id="Coord" init="(120, 30)"/>
+	    <state mut="Change" id="Mass" init="6"/>
+	    <state mut="Change" id="Rad" init="15"/>
+	    <state mut="Change" id="Start" init="1"/>
+	</object>
+	-->
+
 
 	<state type="StRect" id="Rect" access="Inp" init="0">
 	    <logspec event="upd"> <logdata id="new"/> </logspec> </state>
@@ -112,7 +167,7 @@
 	<conn state="ball_2.McPos"> <dep inp="McPos" conn="McPos"/></conn>
 
 	<!-- -->
-	<conn state="Area_Initializer.Borders_count"> <dep inp="Rect" conn="Rect"/> <dep inp="Self" dep="Area_Initializer.Borders_count"/></conn>
+	<conn state="Area_Initializer.Borders_count"> <dep inp="Rect" conn="Rect"/> <dep inp="Self" conn="Area_Initializer.Borders_count"/></conn>
 
     </object> <!-- area -->
 </caeenv>
