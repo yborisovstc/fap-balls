@@ -5,16 +5,16 @@
 #include <gtk/gtk.h>
 #include <stdlib.h>
 #include <fapext.h>
+#include <fapstext.h>
 #include "fap-balls-model.h"
-
 
 static void UpdateBordersCount(CAE_Object* aObject, CAE_State* aState);
 static void UpdateBallCreationStart(CAE_Object* aObject, CAE_State* aState);
 static void UpdateBallCreationReady(CAE_Object* aObject, CAE_State* aState);
 
-const TTransInfo KTinfo_Update_coord = TTransInfo(CFT_Ball::UpdateCoord_S_, "trans_coord");
-const TTransInfo KTinfo_Update_velocity = TTransInfo(CFT_Ball::UpdateVelocity_S_, "trans_inpv");
-const TTransInfo KTinfo_Update_moved = TTransInfo(CFT_Ball::UpdateSelected_S_, "trans_moved");
+const TTransInfo KTinfo_Update_coord = TTransInfo(UpdateCoord, "trans_coord");
+const TTransInfo KTinfo_Update_velocity = TTransInfo(UpdateVelocity, "trans_inpv");
+const TTransInfo KTinfo_Update_moved = TTransInfo(UpdateSelected, "trans_moved");
 const TTransInfo KTinfo_Update_borders_count = TTransInfo(UpdateBordersCount, "trans_borders_count");
 const TTransInfo KTinfo_Update_ball_creation_ready = TTransInfo(UpdateBallCreationReady, "trans_ball_creation_ready");
 const TTransInfo KTinfo_Update_ball_creation_start = TTransInfo(UpdateBallCreationStart, "trans_ball_creation_start");
@@ -39,133 +39,53 @@ const TInt KBallMassMax = 1000;
 
 GdkGC *gr_cont;
 
-class CFT_BArrea_Painter: public MBallAreaWindow
-{
-public:
-	CFT_BArrea_Painter(GtkWidget* aWidget) : iWidget(aWidget) {}
-	virtual ~CFT_BArrea_Painter() {}
-	//from MBallAreaWindow
-	virtual void redraw(CF_TdPoint aCenter, TInt aRadius, TBool aErase);
-	virtual void drawBall(CF_TdPoint aCenter, TInt aRadius, CF_TdColor aColor);
-private:
-	GtkWidget* iWidget;
-};
-
-void CFT_BArrea_Painter::redraw(CF_TdPoint aCenter, TInt aRadius, TBool aErase)
-{
-    GdkRectangle rect;
-    rect.x = aCenter.iX-aRadius; if (rect.x < 0) rect.x = 0;
-    rect.y = aCenter.iY-aRadius; if (rect.y < 0) rect.y = 0;
-    rect.width = aRadius * 2.0;
-    rect.height = aRadius * 2.0;
-    // [YB] Ball draw jitters when use clearing old ball, but it works ok when commented the code below, why?
-    // Seems that dgk clears rect immediatelly but the ball drawn some later on expose event
-//    if (aErase)
-//	gdk_window_clear_area(iWidget->window, rect.x, rect.y, rect.width, rect.height);
-    gdk_window_invalidate_rect(iWidget->window, &rect, TRUE);
-}
-
-void CFT_BArrea_Painter::drawBall(CF_TdPoint aCenter, TInt aRadius, CF_TdColor aColor)
-{
-    long x, y, size;
-    x = aCenter.iX - aRadius;
-    y = aCenter.iY - aRadius;
-    size = aRadius * 2.0;
-
-    GdkGC *gc;
-    //gc = iWidget->style->fg_gc[GTK_WIDGET_STATE (iWidget)];
-    //gdk_gc_copy(gc, iWidget->style->fg_gc[GTK_WIDGET_STATE (iWidget)]);
-//    gc = gdk_gc_new(iWidget->window); 
-    gc = gr_cont;
-    GdkColor color;
-    gboolean res = FALSE;
-    //res = gdk_colormap_alloc_color(gtk_widget_get_colormap(iWidget), &color, FALSE, TRUE); 
-    //res = gdk_colormap_alloc_color(gdk_rgb_get_colormap(), &color, FALSE, FALSE); 
-    /* Needs to shift RGB codes because GdkColor uses 16-bit coding */ 
-    /* Attribute "pixel" needs to be 0 value, because we use RGB color but not allocated from colormap */
-    color.pixel = 0;
-    color.red = aColor.iRed << 8;
-    color.green = aColor.iGreen << 8;
-    color.blue = aColor.iBlue << 8;
-    /* Needs to use gdk_gc_set_rgb_fg_color because we use RGB colour but not allocated from colormap */
-    //gdk_gc_set_foreground(gc, &color);
-     gdk_gc_set_rgb_fg_color(gc, &color);
-    gdk_draw_arc (iWidget->window, gc, TRUE, x, y, size, size, 0, 64 * 360);
-}
-
-
 
 const char* KLogSpecFileName = "/var/log/faplogspec.txt";
 const char* KLogFileName = "fap-balls.log";
 const char* KSpecFileName = "fap-balls-spec.xml";
-const char* KFAreaName = "Area";
     
 /* Time slice of FAP environment, in milliseconds */
 const gint KFapeTimeSlice = 30;
 
 gboolean expose_event_callback(GtkWidget *widget, GdkEventExpose *event, gpointer data);
-
 gboolean idle_event_handler(gpointer data);
-
 static gboolean delete_event_handler(GtkWidget *widget, GdkEvent *event, gpointer data);
-
 static void destroy_event_handler(GtkWidget *widget, gpointer data);
-
 static gboolean handle_button_press_event(GtkWidget *widget, GdkEventButton *event, gpointer data);
-
 static gboolean handle_button_release_event(GtkWidget *widget, GdkEventButton *event, gpointer data);
-    
 static gboolean handle_motion_notify_event( GtkWidget *widget, GdkEventMotion *event, gpointer data);
-
 static gboolean handle_frame_event( GtkWidget *widget, GdkEvent *event, gpointer data);
-
 static gboolean handle_area_size_allocate_event( GtkWidget *widget, GtkAllocation *allocation, gpointer data);
-
 static void draw_area();
-
-static void draw_ball(CFT_Ball *aBall);
+static void draw_ball(CAE_Object *aBall);
 
 /* Finite automata programming environment */
 CAE_Env* fape = NULL;
-/* 2d area */ 
-CFT_Area* farea = NULL;
 /* Area painter */
 CFT_BArrea_Painter* fapainter = NULL;
-
 
 static GtkWidget *main_window;
 static GtkWidget *drawing_area;
 
 int main(int argc, char *argv[])
 {
-
-    printf("main\n");
-	    
     gtk_init(&argc, &argv);
-
     main_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     drawing_area = gtk_drawing_area_new();
     // gtk_widget_set_size_request(drawing_area, 100, 100);
     gtk_container_add(GTK_CONTAINER(main_window), drawing_area);
 //    gtk_window_set_default_size(GTK_WINDOW(main_window), 500, 500);
 
-    /* Define the header for "delete_event" signal (this is given
-       by the window manager, usually by the "close" option, or on the titlebar) */
+    // Header for "delete_event" signal (this is given by the window manager, usually by the "close" option, or on the titlebar)
     g_signal_connect (G_OBJECT (main_window), "delete_event", G_CALLBACK (delete_event_handler), NULL);
-    /* Define the handler for "destroy" event.  This event occurs when we call gtk_widget_destroy() on the window,
-     * or if we return FALSE in the "delete_event" callback. */
+    // Handler for "destroy" event. It occurs on call gtk_widget_destroy(), or on return FALSE in the "delete_event" callback
     g_signal_connect (G_OBJECT(main_window), "destroy", G_CALLBACK (destroy_event_handler), NULL);
-	
     g_signal_connect(G_OBJECT(drawing_area), "expose_event", G_CALLBACK(expose_event_callback), NULL);
     g_signal_connect (G_OBJECT (drawing_area), "button_press_event", G_CALLBACK (handle_button_press_event), NULL);
     g_signal_connect (G_OBJECT (drawing_area), "button_release_event", G_CALLBACK (handle_button_release_event), NULL);
     g_signal_connect (G_OBJECT (drawing_area), "motion_notify_event", G_CALLBACK (handle_motion_notify_event), NULL);
     g_signal_connect (G_OBJECT (drawing_area), "size_allocate", G_CALLBACK (handle_area_size_allocate_event), NULL);
-
-    /* Sets the event mask (see GdkEventMask) for a widget.
-     * The event mask determines which events a widget will receive */
-//    gtk_widget_set_events (drawing_area, GDK_EXPOSURE_MASK | GDK_LEAVE_NOTIFY_MASK
-//	    | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK | GDK_POINTER_MOTION_MASK | GDK_POINTER_MOTION_HINT_MASK);
+    /* Sets the event mask (see GdkEventMask) for a widget. The event mask determines which events a widget will receive */
     gtk_widget_set_events (drawing_area, GDK_ALL_EVENTS_MASK);
 
     /* Create finite automata environment */
@@ -179,9 +99,6 @@ int main(int argc, char *argv[])
     CAE_TState<CF_Rect>* srect = (CAE_TState<CF_Rect>*) farea->GetInput("Rect");
     *srect = CF_Rect(x, y, x+width, y+height);
     srect->Confirm();
-    /* Create 2d area */
-//    farea = CFT_Area::NewL(KFAreaName, NULL, fapainter, &rect);
-//    fape->AddL(farea);
 
     gtk_widget_show(main_window);
     gtk_widget_show(drawing_area);
@@ -190,22 +107,19 @@ int main(int argc, char *argv[])
     /* Use idle of main loop to drive FAP environment */
     g_timeout_add(KFapeTimeSlice, idle_event_handler, NULL);
 
-    /* Created main loop */
     gtk_main(); 
     return 0;
 }
 
 gboolean expose_event_callback(GtkWidget *widget, GdkEventExpose *event, gpointer data)
 {
-    /* Redraw balls area */
     draw_area();
     return TRUE;
 }
 
 gboolean idle_event_handler(gpointer data)
 {
-    if (fape != NULL)
-    {
+    if (fape != NULL) {
 	fape->Step();
     }
     return ETrue;
@@ -213,9 +127,7 @@ gboolean idle_event_handler(gpointer data)
 
 static gboolean delete_event_handler(GtkWidget *widget, GdkEvent *event, gpointer data)
 {
-    /* If you return FALSE in the "delete_event" signal handler, GTK will emit the "destroy" signal. 
-     * Returning TRUE means you don't want the window to be destroyed. 
-     * This is useful for popping up 'are you sure you want to quit?' type dialogs. */
+    // If you return FALSE, GTK will emit the "destroy" signal. Returning TRUE means you don't want the window to be destroyed. 
     return FALSE;
 }
 
@@ -230,10 +142,9 @@ static gboolean handle_button_press_event(GtkWidget *widget, GdkEventButton *eve
     CAE_TState<TInt> *lbdown = (CAE_TState<TInt>*) area->GetInput("LbDown");
     CAE_TState<CF_TdPoint> *mcpos = (CAE_TState<CF_TdPoint>*) area->GetInput("McPos");
 
-    if (event->button == 1)
-    {
-	(*lbdown) = (event->type == GDK_BUTTON_PRESS) ? 1: 0;
-	(*mcpos) = CF_TdPoint(event->x, event->y);
+    if (event->button == 1) {
+	*lbdown = (event->type == GDK_BUTTON_PRESS) ? 1: 0;
+	*mcpos = CF_TdPoint(event->x, event->y);
     }
     return TRUE;
 }
@@ -244,10 +155,9 @@ static gboolean handle_button_release_event(GtkWidget *widget, GdkEventButton *e
     CAE_TState<TInt> *lbdown = (CAE_TState<TInt>*) area->GetInput("LbDown");
     CAE_TState<CF_TdPoint> *mcpos = (CAE_TState<CF_TdPoint>*) area->GetInput("McPos");
 
-    if (event->button == 1)
-    {
-	(*lbdown) = (event->type == GDK_BUTTON_RELEASE) ? 0: 1;
-	(*mcpos) = CF_TdPoint(event->x, event->y);
+    if (event->button == 1) {
+	*lbdown = (event->type == GDK_BUTTON_RELEASE) ? 0: 1;
+	*mcpos = CF_TdPoint(event->x, event->y);
     }
     return TRUE;
 }
@@ -260,15 +170,11 @@ static gboolean handle_motion_notify_event( GtkWidget *widget, GdkEventMotion *e
 
     if (event->is_hint)
 	gdk_window_get_pointer (event->window, &x, &y, &state);
-    else
-    {
-	x = event->x;
-	y = event->y;
+    else {
+	x = event->x; y = event->y;
 	state = (GdkModifierType) event->state;
     }
-
-    if (state)
-    {
+    if (state) {
 	CAE_Object *area = fape->Root(); 
 	CAE_TState<CF_TdPoint> *mcpos = (CAE_TState<CF_TdPoint>*) area->GetInput("McPos");
 	(*mcpos) = CF_TdPoint(x, y);
@@ -287,65 +193,46 @@ static gboolean handle_area_size_allocate_event( GtkWidget *widget, GtkAllocatio
     srect->Confirm();
 }
 
-// TODO [YB] Consider UC of "draw" to implement it in CAE style i.e. "within" the objects but not outside 
-// -- According to the current design, there should be supervising state that contain all balls as inputs.
 static void draw_area()
 {
     int ctx = 0;
     CAE_Object* farea = fape->Root();
-    CFT_Ball* ball = (CFT_Ball*) farea->GetNextCompByType("ball", &ctx);
+    CAE_Object* ball = (CAE_Object*) farea->GetNextCompByType("ball", &ctx);
 
-    while (ball != NULL)
-    {
+    while (ball != NULL) {
 	draw_ball(ball);
-	ball = (CFT_Ball*) farea->GetNextCompByType("ball", &ctx);
+	ball = (CAE_Object*) farea->GetNextCompByType("ball", &ctx);
     }
 }
 
-static void draw_ball(CFT_Ball *aBall)
+static void draw_ball(CAE_Object *aBall)
 {
-    CAE_TState<TInt> *srad = (CAE_TState<TInt>*) aBall->GetInput("Rad");
-    CAE_TState<TInt> *smass = (CAE_TState<TInt>*) aBall->GetInput("Mass");
-    CAE_TState<TBool> *smoved = (CAE_TState<TBool> *) aBall->GetInput("Moved");
-    CAE_TState<CF_TdPointF> *scoord = (CAE_TState<CF_TdPointF>*) aBall->GetOutput("Coord");
+    TInt rad = ~*(CAE_TState<TInt>*) aBall->GetInput("Rad");
+    TInt mass = ~*(CAE_TState<TInt>*) aBall->GetInput("Mass");
+    TBool selected = ~*(CAE_TState<TBool> *) aBall->GetInput("Moved");
+    CF_TdPointF coord = ~*(CAE_TState<CF_TdPointF>*) aBall->GetOutput("Coord");
 
-    int rad = srad->Value();
-    TBool selected = smoved->Value();
-    CF_TdPointF coord = scoord->Value();
-    int mass = smass->Value();
-
-    long centx, centy;
-    centx = coord.iX;
-    centy = coord.iY;
     TUint8 cblue = 0xff - (mass*0xff)/KBallMassMax;
-    if (cblue < 0)
-	cblue = 0x00;
-    TUint8 cgreen = 0x00;
-    if (selected)
-	cgreen |= 0xff;
-    fapainter->drawBall(CF_TdPoint(centx, centy), rad, CF_TdColor(0x00, cgreen, cblue));
+    if (cblue < 0) cblue = 0x00;
+    TUint8 cgreen = selected ? 0xff : 0x00;
+    fapainter->drawBall(CF_TdPoint((long) coord.iX, (long) coord.iY), rad, CF_TdColor(0x00, cgreen, cblue));
 }
 
 // TODO [YB] To migrate to using object proxy instead of direct access to area
 static void UpdateBordersCount(CAE_Object* aObject, CAE_State* aState)
 {
     const TInt KBorderRadius = 50000;
-
     CAE_TState<TInt> *sself = (CAE_TState<TInt>*) aState;
-    CAE_TState<CF_Rect> *srect = (CAE_TState<CF_Rect>*) aState->Input("Rect");
-
     // TODO [YB] Implement one shot by detaching inputs
     if (~*sself == 0 ) {
 	// Create borders
-	CF_Rect rt = ~*srect;
-	float midx, midy;
-	midx = (rt.iRightLower.iX - rt.iLeftUpper.iX)/2.0;
-	midy = (rt.iRightLower.iY - rt.iLeftUpper.iY)/2.0;
-	printf("area_constr: lx= %d, ly= %d, rx= %d, ry= %d\n", rt.iLeftUpper.iX, rt.iLeftUpper.iY, rt.iRightLower.iX, rt.iRightLower.iY);
-	CFT_Area::CreateBorder(rt.iLeftUpper.iX-KBorderRadius, midy, "Border_Left", CAE_TRANS(CFT_Area::UpdateBordHookLeft));	
-	CFT_Area::CreateBorder(rt.iRightLower.iX + KBorderRadius, midy, "Border_Right", CAE_TRANS(CFT_Area::UpdateBordHookRight));	
-	CFT_Area::CreateBorder(midx, rt.iLeftUpper.iY - KBorderRadius, "Border_Top", CAE_TRANS(CFT_Area::UpdateBordHookTop));	
-	CFT_Area::CreateBorder(midx, rt.iRightLower.iY + KBorderRadius, "Border_Bottom", CAE_TRANS(CFT_Area::UpdateBordHookBottom));	
+	CF_Rect rt = ~*(CAE_TState<CF_Rect>*) aState->Input("Rect");
+	float midx = (rt.iRightLower.iX - rt.iLeftUpper.iX)/2.0;
+	float midy = (rt.iRightLower.iY - rt.iLeftUpper.iY)/2.0;
+	CreateBorder(rt.iLeftUpper.iX-KBorderRadius, midy, "Border_Left", UpdateBordHookLeft);	
+	CreateBorder(rt.iRightLower.iX + KBorderRadius, midy, "Border_Right", UpdateBordHookRight);	
+	CreateBorder(midx, rt.iLeftUpper.iY - KBorderRadius, "Border_Top", UpdateBordHookTop);	
+	CreateBorder(midx, rt.iRightLower.iY + KBorderRadius, "Border_Bottom", UpdateBordHookBottom);	
 	*sself = ~*sself + 1;
     }
 }
@@ -355,24 +242,20 @@ static void UpdateBallCreationReady(CAE_Object* aObject, CAE_State* aState)
     CAE_TState<TBool> *sself = (CAE_TState<TBool>*) aState;
     CAE_TState<TBool> *sready= (CAE_TState<TBool>*) aState->Input("Ready");
     CAE_TState<TBool> *sstart= (CAE_TState<TBool>*) aState->Input("Start");
-    CAE_TState<CF_TdPointF> *scoord = (CAE_TState<CF_TdPointF>*) aState->Input("Coord");
-    CAE_TState<TInt> *smass= (CAE_TState<TInt>*) aState->Input("Mass");
-    CAE_TState<TUint32> *srad= (CAE_TState<TUint32>*) aState->Input("Rad");
-    _FAP_ASSERT(sself && sready && sstart && scoord && smass && srad);
+    _FAP_ASSERT(sself && sready && sstart);
     if (~*sstart && ~*sself) {
-	CF_TdPointF coord = ~*scoord;
-	TInt mass = ~*smass;
-	TUint32 rad = ~*srad;
+	CF_TdPointF coord = ~*(CAE_TState<CF_TdPointF>*) aState->Input("Coord");
+	TInt mass= ~*(CAE_TState<TInt>*) aState->Input("Mass");
+	TUint32 rad= ~*(CAE_TState<TUint32>*) aState->Input("Rad");
 	int num = rand();
 	char *name = (char*) malloc(100);
 	sprintf(name, "ball_%d", num);
-	CFT_Area::CreateBall(coord.iX,  coord.iY, mass, rad, name);
+	CreateBall(coord.iX,  coord.iY, mass, rad, name);
 	free(name);
 	*sself = EFalse;
     }	
-    else if (!~*sstart) {
+    else if (!~*sstart) 
 	*sself = ETrue;
-    }
 }
 
 static void UpdateBallCreationStart(CAE_Object* aObject, CAE_State* aState)
@@ -380,7 +263,6 @@ static void UpdateBallCreationStart(CAE_Object* aObject, CAE_State* aState)
     CAE_TState<TBool> *sself = (CAE_TState<TBool>*) aState;
     CAE_TState<TBool> *sready= (CAE_TState<TBool>*) aState->Input("Ready");
     _FAP_ASSERT(sself && sready);
-    if (~*sready) {
+    if (~*sready) 
 	*sself = EFalse;
-    }
 }

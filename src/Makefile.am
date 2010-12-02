@@ -1,4 +1,4 @@
-AM_CPPFLAGS = -D_PLAT_LINUX_ -g -O0
+AM_CPPFLAGS = -D_PLAT_LINUX_ -g -O2
 
 bin_PROGRAMS = fap-balls
 

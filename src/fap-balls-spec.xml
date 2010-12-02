@@ -14,7 +14,7 @@
 	    <state type="StPointF" id="Coord"  access="Out" transf="trans_coord" init="(0,0)"> 
 		<logspec event="upd"> <logdata id="new"/> </logspec> 
 		<!-- Inputs from itself -->
-		<inp id="CoordS"/> <inp id="InpVS"/> <inp id="MassS"/> <inp id="RadS"/> <inp id="TranspS"/> <inp id="MovedS"/> <inp id="McPosS"/> 
+		<inp id="CoordS"/> <inp id="InpVS"/> <inp id="MassS"/> <inp id="RadS"/> <inp id="TranspS"/>
 		<!-- External inputs -->
 		<inp id="Coord.*"/> <inp id="Rad.*"/> <inp id="Transp.*"/> <inp id="InpV.*"/>
 	    </state>
@@ -62,7 +62,7 @@
 
 	    <!-- TODO [YB] Input "MassS" is required only for condition for coord trans but not for transition itsels. Reconsider. -->
 	    <conn state="Coord"> <dep inp="CoordS" conn="Coord"/> <dep inp="InpVS" conn="InpV"/> <dep inp="MassS" conn="Mass"/> <dep inp="RadS" conn="Rad"/> 
-		<dep inp="TranspS" conn="Transp"/> <dep inp="MovedS" conn="Moved"/> <dep inp="McPosS" conn="McPos"/> </conn>
+		<dep inp="TranspS" conn="Transp"/></conn>
 	    <conn state="InpV"> <dep inp="CoordS" conn="Coord"/> <dep inp="RadS" conn="Rad"/> <dep inp="TranspS" conn="Transp"/> <dep inp="InpVS" conn="InpV"/>
 		<dep inp="MovedS" conn="Moved"/> <dep inp="McPosS" conn="McPos"/> <dep inp="MassS" conn="Mass"/> </conn>
 	    <conn state="Moved"> <dep inp="LbDownS" conn="LbDown"/> <dep inp="HookedPermS" conn="HookedPerm"/>  
