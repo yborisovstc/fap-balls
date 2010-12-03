@@ -7,7 +7,6 @@
 #include <fapplat.h>
 #include <fapbase.h>
 #include <gtk/gtk.h>
-#include <gdk/gdk.h>
 
 struct CF_TdColor
 {
@@ -43,10 +42,7 @@ void UpdateVelocity(CAE_Object* aObject, CAE_State* aState);
 void UpdateSelected(CAE_Object* aObject, CAE_State* aState);
 void GetProjOfVel(CF_TdPointF aAngleBeg, CF_TdPointF aAngleEnd, CF_TdVectF aVel, CF_TdVectF& aVelNorm, CF_TdVectF& aVelTang);
 
-inline float GetDistance(CF_TdPointF aCoord1, CF_TdPointF aCoord2) {
-    float r2 = (aCoord1.iX - aCoord2.iX)*(aCoord1.iX - aCoord2.iX) + (aCoord1.iY - aCoord2.iY)*(aCoord1.iY - aCoord2.iY);
-    return sqrt (r2);
-}
+inline float GetDistance(CF_TdPointF aCoord1, CF_TdPointF aCoord2) { return (aCoord2 - aCoord1).Mod(); }
 
 #endif // __FAPTSOB_DEF_
 

@@ -40,8 +40,6 @@ void CFT_BArrea_Painter::redraw(CF_TdPoint aCenter, TInt aRadius, TBool aErase)
 
 void CFT_BArrea_Painter::drawBall(CF_TdPoint aCenter, TInt aRadius, CF_TdColor aColor)
 {
-    long x = aCenter.iX - aRadius;
-    long y = aCenter.iY - aRadius;
     long size = aRadius * 2.0;
     GdkGC *gc = gr_cont;
 //    gc = gdk_gc_new(iWidget->window); 
@@ -53,7 +51,7 @@ void CFT_BArrea_Painter::drawBall(CF_TdPoint aCenter, TInt aRadius, CF_TdColor a
     color.blue = aColor.iBlue << 8;
     /* Needs to use gdk_gc_set_rgb_fg_color because we use RGB colour but not allocated from colormap */
     gdk_gc_set_rgb_fg_color(gc, &color);
-    gdk_draw_arc (iWidget->window, gc, TRUE, x, y, size, size, 0, 64 * 360);
+    gdk_draw_arc (iWidget->window, gc, TRUE, aCenter.iX - aRadius, aCenter.iY - aRadius, size, size, 0, 64 * 360);
 }
 
 // Area
@@ -61,24 +59,16 @@ void CFT_BArrea_Painter::drawBall(CF_TdPoint aCenter, TInt aRadius, CF_TdColor a
 CAE_Object* CreateBall(float aCoordX,  float aCoordY, TInt aMass, TInt aRad, const char* aInstName, TBool aBorder)
 {
     CAE_Object *area = fape->Root(); 
-    char name[50];
-    if (aInstName != NULL) 
-	strcpy(name, aInstName);
-    else 
-	sprintf(name, KBallName, area->CountCompWithType("Ball") + 1);
-
     CAE_Object* ball = (CAE_Object *) area->FindByName("ball");
-    CAE_Object* newball = ball->CreateNewL(NULL, name, area);
+    CAE_Object* newball = ball->CreateNewL(NULL, aInstName, area);
     CF_TdPointF coord(aCoordX, aCoordY);
     CAE_TState<TInt> *srad = (CAE_TState<TInt>*) newball->GetInput("Rad");
     CAE_TState<CF_TdPointF> *scoord = (CAE_TState<CF_TdPointF>*) newball->GetOutput("Coord");
     CAE_TState<TInt> *smass = (CAE_TState<TInt>*) newball->GetInput("Mass");
-    // Confirm states new values because newly created ball can be updated this tick and new values will be lost
-    // TODO [YB] Consider this situation. It is not obvious for developers
+    // Confirm states because newly created ball can be updated this tick  TODO [YB] not obvious fact
     *srad = aRad; srad->Confirm();
     *scoord= coord; scoord->Confirm();
     *smass = aMass; smass->Confirm();
-
     AddBallL(newball, !aBorder);
     return newball;
 }
@@ -102,21 +92,11 @@ void LinkBall(CAE_Object* aBallRec, CAE_Object* aBallExt)
 {
     CAE_TState<CF_TdVectF> *s_vel = (CAE_TState<CF_TdVectF> *) aBallRec->GetInput("InpV");
     CAE_TState<CF_TdPointF> *s_coord = (CAE_TState<CF_TdPointF> *) aBallRec->GetOutput("Coord");
-    CAE_TState<CF_TdPointF> *se_coord = (CAE_TState<CF_TdPointF> *) aBallExt->GetOutput("Coord");
-    CAE_TState<TInt> *se_mass = (CAE_TState<TInt> *) aBallExt->GetInput("Mass");
-    CAE_TState<TInt> *se_rad = (CAE_TState<TInt>*) aBallExt->GetInput("Rad");
-    CAE_TState<CF_TdVectF> *se_vel = (CAE_TState<CF_TdVectF> *) aBallExt->GetInput("InpV");
-    CAE_TState<TBool> *se_transp = (CAE_TState<TBool>*) aBallExt->GetInput("Transp");
-
-    s_vel->AddExtInputL("Coord", se_coord);
-    s_vel->AddExtInputL("Mass", se_mass);
-    s_vel->AddExtInputL("Rad", se_rad);
-    s_vel->AddExtInputL("InpV", se_vel);
-    s_vel->AddExtInputL("Transp", se_transp);
-    s_coord->AddExtInputL("Coord", se_coord);
-    s_coord->AddExtInputL("Rad", se_rad);
-    s_coord->AddExtInputL("InpV", se_vel);
-    s_coord->AddExtInputL("Transp", se_transp);
+    s_vel->AddExtInputL("Coord", aBallExt->GetOutput("Coord"));
+    s_vel->AddExtInputL("Mass", aBallExt->GetInput("Mass"));
+    s_vel->AddExtInputL("Rad", aBallExt->GetInput("Rad"));
+    s_vel->AddExtInputL("InpV", aBallExt->GetInput("InpV"));
+    s_vel->AddExtInputL("Transp", aBallExt->GetInput("Transp"));
 }
 
 void AddBallL(CAE_Object* aObBall, TBool aUseAreaHook)
@@ -178,39 +158,16 @@ void UpdateBordHookBottom(CAE_Object* aObject, CAE_State* aState)
 
 void UpdateCoord(CAE_Object* aObject, CAE_State* aState)
 {
-    TInt mass = ~*(CAE_TState<TInt> *) aState->Input("MassS");
-    if (mass != 0)
-    {
-	CAE_TState<CF_TdPointF> *sthis = (CAE_TState<CF_TdPointF> *) aState;
-	CF_TdPointF coord = ~*(CAE_TState<CF_TdPointF> *) aState->Input("CoordS");
-	CF_TdVectF vel = ~*(CAE_TState<CF_TdVectF> *) aState->Input("InpVS");
-	TBool transp = ~*(CAE_TState<TBool>*) aState->Input("TranspS");
-	TInt rad = ~*(CAE_TState<TInt>*) aState->Input("RadS");
-
-	CF_TdPointF newcoord(coord.iX + vel.iX, coord.iY + vel.iY);
-	// Check if there will be some collision at the next update
-	for (TInt i = 0; ; i++) 
-	{
-	    CAE_TState<CF_TdPointF> *sexcoord = (CAE_TState<CF_TdPointF> *) aState->Input("Coord", i);
-	    if (sexcoord == NULL) break;
-	    CF_TdPointF excoord = ~*sexcoord;
-	    TInt exrad = ~*(CAE_TState<TInt>*) aState->Input("Rad", i);
-	    CF_TdVectF exvel = ~*(CAE_TState<CF_TdVectF> *) aState->Input("InpV", i);
-	    TBool extransp = ~*(CAE_TState<TBool>*) aState->Input("Transp", i);
-
-	    CF_TdPointF newexcoord(excoord.iX + exvel.iX, excoord.iY + exvel.iY);
-	    float r = GetDistance(newcoord, newexcoord);
-	    float curdis = GetDistance(coord, excoord);
-	    TBool superpos = ((curdis < rad + exrad) && !transp);
-	    // If there is no superposition, and collistion will happen, then fix coord
-	    if (!superpos && ((r <= (rad + exrad)) && !(transp && extransp))) 
-		newcoord = coord;
-	}
-	(*sthis) = newcoord;
-	// Redraw the ball
-	fapainter->redraw(CF_TdPoint(coord.iX, coord.iY), rad, ETrue);
-	fapainter->redraw(CF_TdPoint(newcoord.iX, newcoord.iY), rad, EFalse);
-    }
+    // TODO [YB] Coord actually doesn't depend on Rad - fake input  
+    CAE_TState<CF_TdPointF> *sthis = (CAE_TState<CF_TdPointF> *) aState;
+    CF_TdPointF coord = ~*(CAE_TState<CF_TdPointF> *) aState->Input("CoordS");
+    CF_TdVectF vel = ~*(CAE_TState<CF_TdVectF> *) aState->Input("InpVS");
+    TInt rad = ~*(CAE_TState<TInt>*) aState->Input("RadS");
+    CF_TdPointF newcoord(coord.iX + vel.iX, coord.iY + vel.iY);
+    (*sthis) = newcoord;
+    // Redraw the ball
+    fapainter->redraw(CF_TdPoint(coord.iX, coord.iY), rad, ETrue);
+    fapainter->redraw(CF_TdPoint(newcoord.iX, newcoord.iY), rad, EFalse);
 }
 
 void UpdateSelected(CAE_Object* aObject, CAE_State* aState)
@@ -219,25 +176,17 @@ void UpdateSelected(CAE_Object* aObject, CAE_State* aState)
     TInt down = ~*(CAE_TState<TInt>*) aState->Input("LbDownS");
     TBool hookedperm = ~*(CAE_TState<TBool> *) aState->Input("HookedPermS");
     TBool sel = ~*sthis;
-
     if (hookedperm) 
 	sel = TRUE;
-    else if (sel) {
-	if (!down) 
-	    sel = EFalse;
-    }
-    else {
-	if (down) {
-	    CF_TdPoint mcpos = ~*(CAE_TState<CF_TdPoint>*) aState->Input("McPosS");
-	    CF_TdPointF coord = ~*(CAE_TState<CF_TdPointF> *) aState->Input("CoordS");
-	    TInt rad = ~*(CAE_TState<TInt>*) aState->Input("RadS");
-	    float disx = (mcpos.iX - coord.iX);
-	    float disy = (mcpos.iY - coord.iY);
-	    float dis = sqrt(disx*disx + disy*disy);
-	    sel = dis < rad;
-	}
-	else 
-	    sel = EFalse;
+    else if (sel && !down) 
+	sel = EFalse;
+    else if (!sel && down) {
+	CF_TdPoint mcpos = ~*(CAE_TState<CF_TdPoint>*) aState->Input("McPosS");
+	CF_TdPointF coord = ~*(CAE_TState<CF_TdPointF> *) aState->Input("CoordS");
+	TInt rad = ~*(CAE_TState<TInt>*) aState->Input("RadS");
+	float disx = mcpos.iX - coord.iX, disy = mcpos.iY - coord.iY;
+	float dis = sqrt(disx*disx + disy*disy);
+	sel = dis < rad;
     }
     *sthis = sel;
 }
@@ -258,17 +207,13 @@ void UpdateVelocity(CAE_Object* aObject, CAE_State* aState)
     // Calculate the force from the hook
     if (selected) { 
 	CF_TdVectF vdis(curcoord, CF_TdPointF(hookcoord));
-	float dis = sqrt(vdis.M2());
 	// If the ball in the trap then stop any movement
-	//if (dis < currad)
-	if (dis < 10) {
+	if (vdis.Mod() < 10) {
 	    *sthis = newvel; return;
 	}
 	vforce += vdis * KHookSc;
 	// Dempfing
-	float cvelmod = sqrt(curvel.M2()); 
-	float force = sqrt(vforce.M2()); 
-	if (force > KFrictForceManMov) 
+	if (vforce.Mod() > KFrictForceManMov) 
 	    vforce -= (curvel * KConstFriction); 
 	else 
 	    vforce = CF_TdPointF(0.0, 0.0); 
@@ -294,12 +239,10 @@ void UpdateVelocity(CAE_Object* aObject, CAE_State* aState)
 		vforce = (r == 0.0) ? CF_TdVectF(-KForceOfExtrs, -KForceOfExtrs) : CF_TdVectF(excoord, curcoord)*(KForceOfExtrs/r);
 	}
     }
-    if (curmass > 0.0) 
-	newvel = curvel + vforce/curmass;
+    newvel = curvel + vforce/curmass;
 
-    // Predict the updated coordinate
+    // Check if there will be some collision at the next update. Use coordinate prediction for that
     CF_TdPointF newcoord = curcoord + CF_TdPointF(curvel);
-    // Check if there will be some collision at the next update
     for (i = 0; ; i++) 
     {
 	CAE_TState<CF_TdPointF> *sexcoord = (CAE_TState<CF_TdPointF> *) aState->Input("Coord", i);
@@ -309,14 +252,12 @@ void UpdateVelocity(CAE_Object* aObject, CAE_State* aState)
 	TInt exrad = ~*(CAE_TState<TInt>*) aState->Input("Rad", i);
 	CF_TdVectF exvel = ~*(CAE_TState<CF_TdVectF> *) aState->Input("InpV", i);
 	TBool extransp = ~*(CAE_TState<TBool>*) aState->Input("Transp", i);
-
 	if (exmass != 0 && !(transp && extransp)) {
 	    CF_TdPointF newexcoord = excoord + CF_TdPointF(exvel);
 	    float newdis = GetDistance(newcoord, newexcoord);
 	    float curdis = GetDistance(curcoord, excoord);
 	    // Handle collision && !superposition
 	    if ((newdis < (currad + exrad)) && !(curdis <= (currad + exrad))) {
-		printf("CFT_Ball::UpdateVelocity: r: %f, currad: %d, exrad: %d\n", newdis, currad, exrad);
 		// Get the projections of interacting balls
 		CF_TdVectF curvel_norm, curvel_tang, exvel_norm, exvel_tang;
 		GetProjOfVel(newexcoord, newcoord, curvel, curvel_norm, curvel_tang);

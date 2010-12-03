@@ -45,7 +45,7 @@ const char* KLogFileName = "fap-balls.log";
 const char* KSpecFileName = "fap-balls-spec.xml";
     
 /* Time slice of FAP environment, in milliseconds */
-const gint KFapeTimeSlice = 30;
+const gint KFapeTimeSlice = 50;
 
 gboolean expose_event_callback(GtkWidget *widget, GdkEventExpose *event, gpointer data);
 gboolean idle_event_handler(gpointer data);

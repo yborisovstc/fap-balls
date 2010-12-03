@@ -14,9 +14,7 @@
 	    <state type="StPointF" id="Coord"  access="Out" transf="trans_coord" init="(0,0)"> 
 		<logspec event="upd"> <logdata id="new"/> </logspec> 
 		<!-- Inputs from itself -->
-		<inp id="CoordS"/> <inp id="InpVS"/> <inp id="MassS"/> <inp id="RadS"/> <inp id="TranspS"/>
-		<!-- External inputs -->
-		<inp id="Coord.*"/> <inp id="Rad.*"/> <inp id="Transp.*"/> <inp id="InpV.*"/>
+		<inp id="CoordS"/> <inp id="InpVS"/> <inp id="RadS"/> 
 	    </state>
 
 	    <state type="StInt" id="Mass"  access="Inp" init="100"> 
@@ -61,8 +59,7 @@
 	    </state>
 
 	    <!-- TODO [YB] Input "MassS" is required only for condition for coord trans but not for transition itsels. Reconsider. -->
-	    <conn state="Coord"> <dep inp="CoordS" conn="Coord"/> <dep inp="InpVS" conn="InpV"/> <dep inp="MassS" conn="Mass"/> <dep inp="RadS" conn="Rad"/> 
-		<dep inp="TranspS" conn="Transp"/></conn>
+	    <conn state="Coord"> <dep inp="CoordS" conn="Coord"/> <dep inp="InpVS" conn="InpV"/> <dep inp="RadS" conn="Rad"/> </conn>
 	    <conn state="InpV"> <dep inp="CoordS" conn="Coord"/> <dep inp="RadS" conn="Rad"/> <dep inp="TranspS" conn="Transp"/> <dep inp="InpVS" conn="InpV"/>
 		<dep inp="MovedS" conn="Moved"/> <dep inp="McPosS" conn="McPos"/> <dep inp="MassS" conn="Mass"/> </conn>
 	    <conn state="Moved"> <dep inp="LbDownS" conn="LbDown"/> <dep inp="HookedPermS" conn="HookedPerm"/>  
@@ -116,29 +113,35 @@
 	    </conn>
 	</object> <!-- Ball_creator -->
 
+	<!--*****************************************************************************-->
+	<!-- Hook -->
+	<!--*****************************************************************************-->
+	<object type="none" id="Hook" quiet="yes">
+	    <!-- Hook coord for Top border -->
+	    <state type="StPoint" id="TopBordHook"  access="Inp" init="0"> 
+		<inp id="AreaRect"/> 
+	    </state>
+	</object>
+
 	<object type="ball" id="ball_1"> <state mut="Change" id="Mass" init="500"/> <state mut="Change" id="Rad" init="40"/> 
 	    <state mut="Change" id="Coord" init="(50,50)"/> </object>
 
 	<object type="ball" id="ball_2"> <state mut="Change" id="Mass" init="200"/> <state mut="Change" id="Rad" init="30"/> 
 	    <state mut="Change" id="Coord" init="(50,50)"/> </object>
 
-	<!--
 	<object type="Ball_creator" id="ball_creator_1" >
 	    <state mut="Change" id="Coord" init="(110, 30)"/>
 	    <state mut="Change" id="Mass" init="40"/>
 	    <state mut="Change" id="Rad" init="20"/>
 	    <state mut="Change" id="Start" init="1"/>
 	</object>
-	-->
 
-	<!--
 	<object type="Ball_creator" id="ball_creator_2" >
 	    <state mut="Change" id="Coord" init="(120, 30)"/>
 	    <state mut="Change" id="Mass" init="6"/>
 	    <state mut="Change" id="Rad" init="15"/>
 	    <state mut="Change" id="Start" init="1"/>
 	</object>
-	-->
 
 
 	<state type="StRect" id="Rect" access="Inp" init="0">
