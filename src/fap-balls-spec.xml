@@ -7,15 +7,21 @@
 <!-- TODO [YB] It is to hard to specify the balls in the ares, especially to link them. We need to ball factory within the area -->
 
 <caeenv>
+    <!--*****************************************************************************-->
+    <!-- Area -->
+    <!--*****************************************************************************-->
     <object type="area" id="Area" quiet="yes">
+
+	<!--*****************************************************************************-->
+	<!-- Ball -->
+	<!--*****************************************************************************-->
 	<object type="none" id="ball" quiet="yes">
 	    <logspec  event="cre"> <logdata id="new"/> </logspec>
 
+	    <!-- Coordinate. Must be float to ensure enough precisement of movement ! -->
 	    <state type="StPointF" id="Coord"  access="Out" transf="trans_coord" init="(0,0)"> 
 		<logspec event="upd"> <logdata id="new"/> </logspec> 
-		<!-- Inputs from itself -->
-		<inp id="CoordS"/> <inp id="InpVS"/> <inp id="RadS"/> 
-	    </state>
+		<inp id="CoordS"/> <inp id="InpVS"/> <inp id="RadS"/> </state>
 
 	    <state type="StInt" id="Mass"  access="Inp" init="100"> 
 		<logspec event="upd"> <logdata id="new"/> </logspec> 
@@ -25,25 +31,22 @@
 		<logspec event="upd"> <logdata id="new"/> </logspec> 
 	    </state>
 
-	    <state type="StVectF" id="InpV" access="Inp" transf="trans_inpv" init="0"> 
+	    <state type="StVectF" id="InpV" access="Inp" transf="trans_inpv" init="(0,0)"> 
 		<logspec event="upd"> <logdata id="new"/> </logspec> 
 		<!-- Inputs from itself -->
 		<inp id="CoordS"/> <inp id="MassS"/> <inp id="RadS"/> <inp id="InpVS"/> <inp id="TranspS"/> <inp id="MovedS"/> <inp id="McPosS"/> 
 		<!-- External inputs -->
-		<inp id="Coord.*"/> <inp id="Mass.*"/> <inp id="Rad.*"/> <inp id="Transp.*"/> <inp id="InpV.*"/>
-	    </state>
+		<inp id="Coord.*"/> <inp id="Mass.*"/> <inp id="Rad.*"/> <inp id="Transp.*"/> <inp id="InpV.*"/> </state>
 
 	    <!-- TODO [YB] McPos is used in borded not as mouse but as area rect. Consider renaming the state -->
 	    <!-- Current position of mouse -->
 	    <state type="StPoint" id="McPos"  access="Inp" init="0"> 
 		<logspec event="upd"> <logdata id="new"/> </logspec> 
-		<inp id="McPos"/> 
-	    </state>
+		<inp id="McPos"/> </state>
 
 	    <state type="StBool" id="Moved"  access="Inp" transf="trans_moved" init="0"> 
 		<logspec event="upd"> <logdata id="new"/> </logspec> 
-		<inp id="LbDownS"/> <inp id="HookedPermS"/> <inp id="CoordS"/> <inp id="RadS"/> <inp id="McPosS"/> 
-	    </state>
+		<inp id="LbDownS"/> <inp id="HookedPermS"/> <inp id="CoordS"/> <inp id="RadS"/> <inp id="McPosS"/> </state>
 
 	    <state type="StBool" id="Transp"  access="Inp" init="0"> 
 		<logspec event="upd"> <logdata id="new"/> </logspec> 
@@ -51,8 +54,7 @@
 
 	    <state type="StInt" id="LbDown"  access="Inp" init="0"> 
 		<logspec event="upd"> <logdata id="new"/> </logspec> 
-		<inp id="LbDown"/> 
-	    </state>
+		<inp id="LbDown"/> </state>
 
 	    <state type="StBool" id="HookedPerm"  access="Inp" init="0"> 
 		<logspec event="upd"> <logdata id="new"/> </logspec> 
@@ -65,7 +67,8 @@
 	    <conn state="Moved"> <dep inp="LbDownS" conn="LbDown"/> <dep inp="HookedPermS" conn="HookedPerm"/>  
 		<dep inp="CoordS" conn="Coord"/> <dep inp="RadS" conn="Rad"/> <dep inp="McPosS" conn="McPos"/> </conn>
 
-	</object> <!-- ball -->
+	</object> 
+	<!--****************************** Ball END ***********************************************-->
 
 	<!-- Area Initializer. It does second phase creation of area - creates borders -->
 	<object type="none" id="Area_Initializer">
@@ -84,7 +87,7 @@
 	     Ready - status of ball creation
 	     -->
 	<object type="none" id="Ball_creator" quiet="yes">
-	    <state type="StPointF" id="Coord"  access="Inp" init="(0,0)"> </state>
+	    <state type="StPoint" id="Coord"  access="Inp" init="(0,0)"> </state>
 	    <state type="StInt" id="Mass"  access="Inp" init="100"> </state>
 	    <state type="StUint32" id="Rad"  access="Inp" init="30"> </state>
 	    <state type="StBool" id="Start"  access="Inp" transf="trans_ball_creation_start" init="0"> 
@@ -113,22 +116,16 @@
 	    </conn>
 	</object> <!-- Ball_creator -->
 
-	<!--*****************************************************************************-->
-	<!-- Hook -->
-	<!--*****************************************************************************-->
-	<object type="none" id="Hook" quiet="yes">
-	    <!-- Hook coord for Top border -->
-	    <state type="StPoint" id="TopBordHook"  access="Inp" init="0"> 
-		<inp id="AreaRect"/> 
-	    </state>
-	</object>
-
 	<object type="ball" id="ball_1"> <state mut="Change" id="Mass" init="500"/> <state mut="Change" id="Rad" init="40"/> 
 	    <state mut="Change" id="Coord" init="(50,50)"/> </object>
 
+	<!--
 	<object type="ball" id="ball_2"> <state mut="Change" id="Mass" init="200"/> <state mut="Change" id="Rad" init="30"/> 
 	    <state mut="Change" id="Coord" init="(50,50)"/> </object>
+	-->
 
+	<!--
+	-->
 	<object type="Ball_creator" id="ball_creator_1" >
 	    <state mut="Change" id="Coord" init="(110, 30)"/>
 	    <state mut="Change" id="Mass" init="40"/>
@@ -136,12 +133,14 @@
 	    <state mut="Change" id="Start" init="1"/>
 	</object>
 
+	<!--
 	<object type="Ball_creator" id="ball_creator_2" >
 	    <state mut="Change" id="Coord" init="(120, 30)"/>
 	    <state mut="Change" id="Mass" init="6"/>
 	    <state mut="Change" id="Rad" init="15"/>
 	    <state mut="Change" id="Start" init="1"/>
 	</object>
+	-->
 
 
 	<state type="StRect" id="Rect" access="Inp" init="0">
@@ -153,24 +152,47 @@
 	<state type="StPoint" id="McPos"  access="Inp" init="0"> 
 	    <logspec event="upd"> <logdata id="new"/> </logspec> </state>
 
+	<!-- Borders hooks -->
+	<state type="StPoint" id="BorderHook_Left"  access="Inp" transf="trans_bord_hook_left" init="0"> 
+	    <logspec event="upd"> <logdata id="new"/> </logspec> 
+	    <inp id="McPos"/> </state>
+
+	<state type="StPoint" id="BorderHook_Right"  access="Inp" transf="trans_bord_hook_right" init="0"> 
+	    <logspec event="upd"> <logdata id="new"/> </logspec> 
+	    <inp id="McPos"/> </state>
+
+	<state type="StPoint" id="BorderHook_Top"  access="Inp" transf="trans_bord_hook_top" init="0"> 
+	    <logspec event="upd"> <logdata id="new"/> </logspec> 
+	    <inp id="McPos"/> </state>
+
+	<state type="StPoint" id="BorderHook_Bottom"  access="Inp" transf="trans_bord_hook_bottom" init="0"> 
+	    <logspec event="upd"> <logdata id="new"/> </logspec> 
+	    <inp id="McPos"/> </state>
+
 	<!-- Ball_1 connections -->
-	<conn state="ball_1.Coord"> <dep inp="Coord.0" conn="ball_2.Coord"/> <dep inp="Rad.0" conn="ball_2.Rad"/> <dep inp="Transp.0" conn="ball_2.Transp"/>
-	    <dep inp="InpV.0" conn="ball_2.InpV"/></conn>
+	<!--
 	<conn state="ball_1.InpV"> <dep inp="Coord.0" conn="ball_2.Coord"/> <dep inp="Rad.0" conn="ball_2.Rad"/> <dep inp="Transp.0" conn="ball_2.Transp"/>
 	    <dep inp="InpV.0" conn="ball_2.InpV"/> <dep inp="Mass.0" conn="ball_2.Mass"/> </conn>
+	-->
 	<conn state="ball_1.LbDown"> <dep inp="LbDown" conn="LbDown"/></conn>
 	<conn state="ball_1.McPos"> <dep inp="McPos" conn="McPos"/></conn>
 
 	<!-- Ball_2 connections -->
-	<conn state="ball_2.Coord"> <dep inp="Coord.0" conn="ball_1.Coord"/> <dep inp="Rad.0" conn="ball_1.Rad"/> <dep inp="Transp.0" conn="ball_1.Transp"/>
-	    <dep inp="InpV.0" conn="ball_1.InpV"/></conn>
+	<!--
 	<conn state="ball_2.InpV"> <dep inp="Coord.0" conn="ball_1.Coord"/> <dep inp="Rad.0" conn="ball_1.Rad"/> <dep inp="Transp.0" conn="ball_1.Transp"/>
 	    <dep inp="InpV.0" conn="ball_1.InpV"/> <dep inp="Mass.0" conn="ball_1.Mass"/> </conn>
 	<conn state="ball_2.LbDown"> <dep inp="LbDown" conn="LbDown"/></conn>
 	<conn state="ball_2.McPos"> <dep inp="McPos" conn="McPos"/></conn>
+	-->
 
 	<!-- -->
 	<conn state="Area_Initializer.Borders_count"> <dep inp="Rect" conn="Rect"/> <dep inp="Self" conn="Area_Initializer.Borders_count"/></conn>
+
+	<!-- Borders hooks connections -->
+	<conn state="BorderHook_Left"> <dep inp="McPos" conn="Rect"/> </conn>
+	<conn state="BorderHook_Right"> <dep inp="McPos" conn="Rect"/> </conn>
+	<conn state="BorderHook_Top"> <dep inp="McPos" conn="Rect"/> </conn>
+	<conn state="BorderHook_Bottom"> <dep inp="McPos" conn="Rect"/> </conn>
 
     </object> <!-- area -->
 </caeenv>

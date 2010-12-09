@@ -7,17 +7,10 @@
 #include <stdio.h>
 #include "fap-balls-model.h"
 
-const char* KBallName = "Ball%d";
 // Gravitation constant
 const TInt KInfl = 9;
 // Default hook stiffness coefficient, n/m
 const TInt KHookSc = 2;
-// Maximum value of mass
-const TInt KMassMax = 1000;
-// The radius of borders
-const TInt KBorderRadius = 50000;
-// The mass of borders
-const TInt KBorderMass = 30000;
 // Constant of friction
 const float KConstFriction = 19.80;
 // Static Force of friction when manual moving, n
@@ -42,74 +35,55 @@ void CFT_BArrea_Painter::drawBall(CF_TdPoint aCenter, TInt aRadius, CF_TdColor a
 {
     long size = aRadius * 2.0;
     GdkGC *gc = gr_cont;
-//    gc = gdk_gc_new(iWidget->window); 
-    GdkColor color;
     // Needs shifting RGB because GdkColor uses 16-bit code. Att pixel = 0, because we use RGB color but not allocated from colormap
-    color.pixel = 0;
-    color.red = aColor.iRed << 8;
-    color.green = aColor.iGreen << 8;
-    color.blue = aColor.iBlue << 8;
-    /* Needs to use gdk_gc_set_rgb_fg_color because we use RGB colour but not allocated from colormap */
+    GdkColor color = {0, aColor.iRed << 8, aColor.iGreen << 8, aColor.iBlue << 8};
+    // Needs to use gdk_gc_set_rgb_fg_color because we use RGB colour but not allocated from colormap
     gdk_gc_set_rgb_fg_color(gc, &color);
     gdk_draw_arc (iWidget->window, gc, TRUE, aCenter.iX - aRadius, aCenter.iY - aRadius, size, size, 0, 64 * 360);
 }
 
 // Area
 
-CAE_Object* CreateBall(float aCoordX,  float aCoordY, TInt aMass, TInt aRad, const char* aInstName, TBool aBorder)
+void CreateBall(TInt aCoordX, TInt aCoordY, TInt aMass, TInt aRad, TBool aHookedPerm, TBool aTransp, const char* aName, const char* aHookName)
 {
     CAE_Object *area = fape->Root(); 
     CAE_Object* ball = (CAE_Object *) area->FindByName("ball");
-    CAE_Object* newball = ball->CreateNewL(NULL, aInstName, area);
+    CAE_Object* newball = ball->CreateNewL(NULL, aName, area);
     CF_TdPointF coord(aCoordX, aCoordY);
-    CAE_TState<TInt> *srad = (CAE_TState<TInt>*) newball->GetInput("Rad");
-    CAE_TState<CF_TdPointF> *scoord = (CAE_TState<CF_TdPointF>*) newball->GetOutput("Coord");
-    CAE_TState<TInt> *smass = (CAE_TState<TInt>*) newball->GetInput("Mass");
+    CAE_TState<TUint32> *srad = (CAE_TState<TUint32>*) newball->GetInp("Rad");
+    CAE_TState<CF_TdPointF> *scoord = (CAE_TState<CF_TdPointF>*) newball->GetOut("Coord");
+    CAE_TState<TInt> *smass = (CAE_TState<TInt>*) newball->GetInp("Mass");
+    CAE_TState<TBool> *shookedperm = (CAE_TState<TBool>*) newball->GetInp("HookedPerm");
+    CAE_TState<TBool> *stransp = (CAE_TState<TBool>*) newball->GetInp("Transp");
     // Confirm states because newly created ball can be updated this tick  TODO [YB] not obvious fact
     *srad = aRad; srad->Confirm();
     *scoord= coord; scoord->Confirm();
     *smass = aMass; smass->Confirm();
-    AddBallL(newball, !aBorder);
-    return newball;
-}
-
-void CreateBorder(float aCoordX,  float aCoordY, const char* aInstName, TTransFun aHookUpdate)
-{
-    CAE_Object *bord = CreateBall(aCoordX, aCoordY, KBorderMass, KBorderRadius, aInstName, ETrue);	
-    CAE_TState<TBool> *shookedperm = (CAE_TState<TBool>*) bord->GetInput("HookedPerm");
-    CAE_TState<TBool> *stransp = (CAE_TState<TBool>*) bord->GetInput("Transp");
-    CAE_Object* farea = fape->Root();
-    CAE_TState<CF_Rect>* srect = (CAE_TState<CF_Rect>*) farea->GetInput("Rect");
-    _FAP_ASSERT(srect != NULL);
-    CAE_TState<CF_TdPoint> *smcpos = (CAE_TState<CF_TdPoint> *) bord->GetInput("McPos");
-    smcpos->SetInputL("McPos", srect);
-    smcpos->SetTrans(TTransInfo(aHookUpdate));
-    *shookedperm = TRUE; shookedperm->Confirm();
-    *stransp = TRUE; stransp->Confirm();
+    *shookedperm = aHookedPerm; shookedperm->Confirm();
+    *stransp = aTransp; stransp->Confirm();
+    AddBallL(newball, aHookName);
 }
 
 void LinkBall(CAE_Object* aBallRec, CAE_Object* aBallExt)
 {
-    CAE_TState<CF_TdVectF> *s_vel = (CAE_TState<CF_TdVectF> *) aBallRec->GetInput("InpV");
-    CAE_TState<CF_TdPointF> *s_coord = (CAE_TState<CF_TdPointF> *) aBallRec->GetOutput("Coord");
-    s_vel->AddExtInputL("Coord", aBallExt->GetOutput("Coord"));
-    s_vel->AddExtInputL("Mass", aBallExt->GetInput("Mass"));
-    s_vel->AddExtInputL("Rad", aBallExt->GetInput("Rad"));
-    s_vel->AddExtInputL("InpV", aBallExt->GetInput("InpV"));
-    s_vel->AddExtInputL("Transp", aBallExt->GetInput("Transp"));
+    CAE_TState<CF_TdVectF>& s_vel = (CAE_TState<CF_TdVectF>&) aBallRec->GetInp("InpV");
+    s_vel.AddExtInputL("Coord", aBallExt->GetOutput("Coord"));
+    s_vel.AddExtInputL("Mass", aBallExt->GetInput("Mass"));
+    s_vel.AddExtInputL("Rad", aBallExt->GetInput("Rad"));
+    s_vel.AddExtInputL("InpV", aBallExt->GetInput("InpV"));
+    s_vel.AddExtInputL("Transp", aBallExt->GetInput("Transp"));
 }
 
-void AddBallL(CAE_Object* aObBall, TBool aUseAreaHook)
+void AddBallL(CAE_Object* aObBall, const char* aHookName)
 {
     CAE_Object *area = fape->Root(); 
     CAE_TState<TInt> *sball_lbdown = (CAE_TState<TInt>*) aObBall->GetInput("LbDown");
     CAE_TState<TInt> *sarea_lbdown = (CAE_TState<TInt>*) area->GetInput("LbDown");
     CAE_TState<CF_TdPoint> *sball_mcpos = (CAE_TState<CF_TdPoint>*) aObBall->GetInput("McPos");
-    CAE_TState<CF_TdPoint> *sarea_mcpos = (CAE_TState<CF_TdPoint>*) area->GetInput("McPos");
+    CAE_TState<CF_TdPoint> *sarea_mcpos = (CAE_TState<CF_TdPoint>*) area->GetInput(aHookName);
 
     sball_lbdown->SetInputL("LbDown", sarea_lbdown); 
-    if (aUseAreaHook)
-	sball_mcpos->SetInputL("McPos", sarea_mcpos); 
+    sball_mcpos->SetInputL("McPos", sarea_mcpos); 
     int ctx = 0;
     CAE_Object* ball = (CAE_Object*) area->GetNextCompByType("ball", &ctx);
     while (ball != NULL) {
@@ -123,34 +97,30 @@ void AddBallL(CAE_Object* aObBall, TBool aUseAreaHook)
 
 void UpdateBordHookLeft(CAE_Object* aObject, CAE_State* aState)
 {
-    CAE_TState<CF_TdPoint> *self = (CAE_TState<CF_TdPoint> *) aState;
-    CF_Rect arect = ~*(CAE_TState<CF_Rect> *) self->Input("McPos");
-    long midy = (arect.iRightLower.iY - arect.iLeftUpper.iY)/2.0;
-    *self = CF_TdPoint(arect.iLeftUpper.iX-KBorderRadius, midy); 
+    CAE_TState<CF_TdPoint>& self = (CAE_TState<CF_TdPoint>&) *aState;
+    const CF_Rect& arect = self.Inp("McPos");
+    self = CF_TdPoint(arect.iLeftUpper.iX-KBorderRadius, (arect.iRightLower.iY - arect.iLeftUpper.iY)/2.0); 
 }
 
 void UpdateBordHookRight(CAE_Object* aObject, CAE_State* aState)
 {
-    CAE_TState<CF_TdPoint> *self = (CAE_TState<CF_TdPoint> *) aState;
-    CF_Rect arect = ~*(CAE_TState<CF_Rect> *) self->Input("McPos");
-    long midy = (arect.iRightLower.iY - arect.iLeftUpper.iY)/2.0;
-    *self = CF_TdPoint(arect.iRightLower.iX + KBorderRadius, midy); 
+    CAE_TState<CF_TdPoint>& self = (CAE_TState<CF_TdPoint>&) *aState;
+    const CF_Rect& arect = self.Inp("McPos");
+    self = CF_TdPoint(arect.iRightLower.iX + KBorderRadius, (arect.iRightLower.iY - arect.iLeftUpper.iY)/2.0); 
 }
 
 void UpdateBordHookTop(CAE_Object* aObject, CAE_State* aState)
 {
-    CAE_TState<CF_TdPoint> *self = (CAE_TState<CF_TdPoint> *) aState;
-    CF_Rect arect = ~*(CAE_TState<CF_Rect> *) self->Input("McPos");
-    long midx = (arect.iRightLower.iX - arect.iLeftUpper.iX)/2.0;
-    *self = CF_TdPoint(midx, arect.iLeftUpper.iY - KBorderRadius); 
+    CAE_TState<CF_TdPoint>& self = (CAE_TState<CF_TdPoint>&) *aState;
+    const CF_Rect& arect = self.Inp("McPos");
+    self = CF_TdPoint((arect.iRightLower.iX - arect.iLeftUpper.iX)/2.0, arect.iLeftUpper.iY - KBorderRadius); 
 }
 
 void UpdateBordHookBottom(CAE_Object* aObject, CAE_State* aState)
 {
-    CAE_TState<CF_TdPoint> *self = (CAE_TState<CF_TdPoint> *) aState;
-    CF_Rect arect = ~*(CAE_TState<CF_Rect> *) self->Input("McPos");
-    long midx = (arect.iRightLower.iX - arect.iLeftUpper.iX)/2.0;
-    *self = CF_TdPoint(midx, arect.iRightLower.iY + KBorderRadius); 
+    CAE_TState<CF_TdPoint>& self = (CAE_TState<CF_TdPoint>&) *aState;
+    const CF_Rect& arect = self.Inp("McPos");
+    self = CF_TdPoint((arect.iRightLower.iX - arect.iLeftUpper.iX)/2.0, arect.iRightLower.iY + KBorderRadius); 
 }
 
 
@@ -158,49 +128,43 @@ void UpdateBordHookBottom(CAE_Object* aObject, CAE_State* aState)
 
 void UpdateCoord(CAE_Object* aObject, CAE_State* aState)
 {
-    // TODO [YB] Coord actually doesn't depend on Rad - fake input  
-    CAE_TState<CF_TdPointF> *sthis = (CAE_TState<CF_TdPointF> *) aState;
-    CF_TdPointF coord = ~*(CAE_TState<CF_TdPointF> *) aState->Input("CoordS");
-    CF_TdVectF vel = ~*(CAE_TState<CF_TdVectF> *) aState->Input("InpVS");
-    TInt rad = ~*(CAE_TState<TInt>*) aState->Input("RadS");
-    CF_TdPointF newcoord(coord.iX + vel.iX, coord.iY + vel.iY);
-    (*sthis) = newcoord;
+    CAE_TState<CF_TdPointF>& sthis = (CAE_TState<CF_TdPointF>&) *aState;
+    const CF_TdVectF& vel = sthis.Inp("InpVS");
+    const TUint32& rad = sthis.Inp("RadS");
+    CF_TdPointF newcoord = ~sthis + vel;
+    sthis = newcoord;
     // Redraw the ball
-    fapainter->redraw(CF_TdPoint(coord.iX, coord.iY), rad, ETrue);
-    fapainter->redraw(CF_TdPoint(newcoord.iX, newcoord.iY), rad, EFalse);
+    fapainter->redraw(~sthis, rad, ETrue);
+    fapainter->redraw(newcoord, rad, EFalse);
 }
 
 void UpdateSelected(CAE_Object* aObject, CAE_State* aState)
 {
-    CAE_TState<TBool> *sthis = (CAE_TState<TBool> *) aState;
-    TInt down = ~*(CAE_TState<TInt>*) aState->Input("LbDownS");
-    TBool hookedperm = ~*(CAE_TState<TBool> *) aState->Input("HookedPermS");
-    TBool sel = ~*sthis;
+    CAE_TState<TBool>& selected = (CAE_TState<TBool>&) *aState;
+    const TInt& down = selected.Inp("LbDownS");
+    const TBool& hookedperm = selected.Inp("HookedPermS");
     if (hookedperm) 
-	sel = TRUE;
-    else if (sel && !down) 
-	sel = EFalse;
-    else if (!sel && down) {
-	CF_TdPoint mcpos = ~*(CAE_TState<CF_TdPoint>*) aState->Input("McPosS");
-	CF_TdPointF coord = ~*(CAE_TState<CF_TdPointF> *) aState->Input("CoordS");
-	TInt rad = ~*(CAE_TState<TInt>*) aState->Input("RadS");
-	float disx = mcpos.iX - coord.iX, disy = mcpos.iY - coord.iY;
-	float dis = sqrt(disx*disx + disy*disy);
-	sel = dis < rad;
+	selected = ETrue;
+    else if (~selected && !down) 
+	selected = EFalse;
+    else if (!~selected && down) {
+	const CF_TdPoint& mcpos = selected.Inp("McPosS");
+	const CF_TdPointF& coord = selected.Inp("CoordS");
+	const TUint32& rad = selected.Inp("RadS");
+	selected = (mcpos - coord).Mod() < rad;
     }
-    *sthis = sel;
 }
 
 void UpdateVelocity(CAE_Object* aObject, CAE_State* aState)
 {
-    CAE_TState<CF_TdVectF> *sthis = (CAE_TState<CF_TdVectF> *) aState;
-    CF_TdPointF curcoord = ~*(CAE_TState<CF_TdPointF> *) aState->Input("CoordS");
-    CF_TdVectF curvel = ~*(CAE_TState<CF_TdVectF> *) aState->Input("InpVS");
-    TBool selected = ~*(CAE_TState<TBool>*) aState->Input("MovedS");
-    TBool transp = ~*(CAE_TState<TBool>*) aState->Input("TranspS");
-    TInt currad = ~*(CAE_TState<TInt>*) aState->Input("RadS");
-    CF_TdPoint hookcoord = ~*(CAE_TState<CF_TdPoint>*) aState->Input("McPosS");
-    TInt curmass = ~*(CAE_TState<TInt> *) aState->Input("MassS");
+    CAE_TState<CF_TdVectF>& sthis = (CAE_TState<CF_TdVectF>&) *aState;
+    const CF_TdPointF& curcoord = sthis.Inp("CoordS");
+    const CF_TdVectF& curvel = sthis.Inp("InpVS");
+    const TBool& selected = sthis.Inp("MovedS");
+    const TBool& transp = sthis.Inp("TranspS");
+    const TUint32& currad = sthis.Inp("RadS");
+    const CF_TdPoint& hookcoord = sthis.Inp("McPosS");
+    const TInt& curmass = sthis.Inp("MassS");
     
     CF_TdVectF vforce(0.0, 0.0), newvel(0.0, 0.0);
     TInt i = 0;
@@ -209,7 +173,7 @@ void UpdateVelocity(CAE_Object* aObject, CAE_State* aState)
 	CF_TdVectF vdis(curcoord, CF_TdPointF(hookcoord));
 	// If the ball in the trap then stop any movement
 	if (vdis.Mod() < 10) {
-	    *sthis = newvel; return;
+	    sthis = newvel; return;
 	}
 	vforce += vdis * KHookSc;
 	// Dempfing
@@ -221,17 +185,13 @@ void UpdateVelocity(CAE_Object* aObject, CAE_State* aState)
 		curcoord.iX, curcoord.iY, vforce.iX, vforce.iY);
     }
     // Calculate the resultant force from the balls 
-    for (i = 0; ; i++) 
+    for (i = 0; sthis.Input("Coord", i) != NULL; i++) 
     {
-	CAE_TState<CF_TdPointF> *sexcoord = (CAE_TState<CF_TdPointF> *) aState->Input("Coord", i);
-	if (sexcoord == NULL) break;
-	CF_TdPointF excoord = ~*sexcoord;
-	TInt exmass = ~*(CAE_TState<TInt> *) aState->Input("Mass", i);
-	TInt exrad = ~*(CAE_TState<TInt>*) aState->Input("Rad", i);
-	TBool sextransp = ~*(CAE_TState<TBool>*) aState->Input("Transp", i);
-
+	const CF_TdPointF& excoord = sthis.Inp("Coord", i);
+	const TInt& exmass = sthis.Inp("Mass", i);
+	const TUint32& exrad = sthis.Inp("Rad", i);
 	if (exmass != 0) {
-	    float r = GetDistance(curcoord, excoord);
+	    float r = (curcoord - excoord).Mod();
 	    float force = (KInfl * curmass * exmass)/(r*r);
 	    if (r > (currad + exrad)) 
 		vforce += CF_TdVectF(curcoord, excoord)*(force/r);
@@ -240,52 +200,43 @@ void UpdateVelocity(CAE_Object* aObject, CAE_State* aState)
 	}
     }
     newvel = curvel + vforce/curmass;
-
     // Check if there will be some collision at the next update. Use coordinate prediction for that
-    CF_TdPointF newcoord = curcoord + CF_TdPointF(curvel);
-    for (i = 0; ; i++) 
+    CF_TdPointF newcoord = curcoord + curvel;
+    for (i = 0; sthis.Input("Coord", i) != NULL; i++) 
     {
-	CAE_TState<CF_TdPointF> *sexcoord = (CAE_TState<CF_TdPointF> *) aState->Input("Coord", i);
-	if (sexcoord == NULL) break;
-	CF_TdPointF excoord = ~*sexcoord;
-	TInt exmass = ~*(CAE_TState<TInt> *) aState->Input("Mass", i);
-	TInt exrad = ~*(CAE_TState<TInt>*) aState->Input("Rad", i);
-	CF_TdVectF exvel = ~*(CAE_TState<CF_TdVectF> *) aState->Input("InpV", i);
-	TBool extransp = ~*(CAE_TState<TBool>*) aState->Input("Transp", i);
+	const CF_TdPointF& excoord = sthis.Inp("Coord", i);
+	const TInt& exmass = sthis.Inp("Mass", i);
+	const TUint32& exrad = sthis.Inp("Rad", i);
+	const CF_TdVectF& exvel = sthis.Inp("InpV", i);
+	const TBool& extransp = sthis.Inp("Transp", i);
 	if (exmass != 0 && !(transp && extransp)) {
-	    CF_TdPointF newexcoord = excoord + CF_TdPointF(exvel);
+	    CF_TdPointF newexcoord = excoord + exvel;
 	    float newdis = GetDistance(newcoord, newexcoord);
 	    float curdis = GetDistance(curcoord, excoord);
-	    // Handle collision && !superposition
-	    if ((newdis < (currad + exrad)) && !(curdis <= (currad + exrad))) {
-		// Get the projections of interacting balls
+	    // Handle collision. If the ball already moving away, then ignore collistion
+	    if ((newdis < (currad + exrad))) {
 		CF_TdVectF curvel_norm, curvel_tang, exvel_norm, exvel_tang;
-		GetProjOfVel(newexcoord, newcoord, curvel, curvel_norm, curvel_tang);
-		GetProjOfVel(newexcoord, newcoord, exvel, exvel_norm, exvel_tang);
-		// Calculate the new velocity. Only normal component is affected
+		TBool div = GetProjOfVel(newcoord, newexcoord, curvel, curvel_norm, curvel_tang);
+		GetProjOfVel(newcoord, newexcoord, exvel, exvel_norm, exvel_tang);
 		float mc1 = ((float) curmass - (float) exmass)/((float) curmass + (float) exmass);
 		float mc2 = (2.0 * exmass)/((float) curmass + (float) exmass);
-		newvel = curvel_norm * mc1 + exvel_norm * mc2 + curvel_tang;
+		if (!div)
+		    newvel = curvel_norm * mc1 + exvel_norm * mc2 + curvel_tang;
 	    }
 	}
     }
-    (*sthis) = newvel;
+    sthis = newvel;
 }
 
-// TODO [YB] Migrate from point to vector
-void GetProjOfVel(CF_TdPointF aAngleBeg, CF_TdPointF aAngleEnd, CF_TdVectF aVel, CF_TdVectF& aVelNorm, CF_TdVectF& aVelTang)
+TBool GetProjOfVel(CF_TdPointF aAngleBeg, CF_TdPointF aAngleEnd, CF_TdVectF aVel, CF_TdVectF& aVelNorm, CF_TdVectF& aVelTang)
 {
-    CF_TdPointF axle(aAngleEnd - aAngleBeg);
-    float axle_m2 = axle.M2();
-    float axle_mod = sqrt(axle_m2);
-    float vel_m2 = aVel.M2();
-    CF_TdPointF diff(aVel.iX - axle.iX, aVel.iY - axle.iY);
-    float diff_m2 = diff.M2();
-    float vel_mod = sqrt(vel_m2);
-    float cos_angle = (vel_m2 > 0.0) ? (vel_m2 + axle_m2 - diff_m2)/(2 * vel_mod * axle_mod) : 1.0; 
-    // Calculate the normal and tang components of current velocity
-    float vel_norm_mod = vel_mod * cos_angle;
-    aVelNorm = CF_TdVectF(axle) * vel_norm_mod / axle_mod;
+    CF_TdVectF axle(aAngleBeg, aAngleEnd);
+    float axle_m2 = axle.M2(), vel_m2 = aVel.M2();
+    float axle_mod = sqrt(axle_m2), vel_mod = sqrt(vel_m2);
+    float diff_m2 = (aVel - axle).M2();
+    float cos_angle = (vel_m2 > 0.0) && (axle_mod > 0.0) ? (vel_m2 + axle_m2 - diff_m2)/(2 * vel_mod * axle_mod) : 1.0; 
+    aVelNorm = (axle_mod > 0.0) ? axle * (vel_mod * cos_angle / axle_mod) : aVelNorm;
     aVelTang = aVel - aVelNorm;
+    return (cos_angle < 0.0);
 }
 
