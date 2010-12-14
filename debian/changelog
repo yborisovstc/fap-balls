@@ -1,3 +1,9 @@
+fap-balls (0.0.4-2) unstable; urgency=low
+
+  * Borders replaced by generic ball
+
+ -- Yuri Borisov <yuri.borisov.v@gmail.com>  Tue, 13 Dec 2010 16:14:22 +0400
+
 fap-balls (0.0.4-1) unstable; urgency=low
 
   * Implemented balls hooks, and moveable borders

@@ -5,10 +5,6 @@
 #include <fapstext.h>
 #include "fap-balls-model.h"
 
-static void UpdateBordersCount(CAE_Object* aObject, CAE_State* aState);
-static void UpdateBallCreationStart(CAE_Object* aObject, CAE_State* aState);
-static void UpdateBallCreationReady(CAE_Object* aObject, CAE_State* aState);
-
 const TTransInfo KTinfo_Update_coord = TTransInfo(UpdateCoord, "trans_coord");
 const TTransInfo KTinfo_Update_velocity = TTransInfo(UpdateVelocity, "trans_inpv");
 const TTransInfo KTinfo_Update_moved = TTransInfo(UpdateSelected, "trans_moved");
@@ -21,31 +17,14 @@ const TTransInfo KTinfo_Update_bord_hook_top = TTransInfo(UpdateBordHookTop, "tr
 const TTransInfo KTinfo_Update_bord_hook_bottom = TTransInfo(UpdateBordHookBottom, "trans_bord_hook_bottom");
 
 // Transition functions register
-const TTransInfo* tinfos[] = {
-    &KTinfo_Update_coord, 
-    &KTinfo_Update_velocity, 
-    &KTinfo_Update_moved, 
-    &KTinfo_Update_borders_count,
-    &KTinfo_Update_ball_creation_ready,
-    &KTinfo_Update_ball_creation_start,
-    &KTinfo_Update_bord_hook_left,
-    &KTinfo_Update_bord_hook_right,
-    &KTinfo_Update_bord_hook_top,
-    &KTinfo_Update_bord_hook_bottom,
+const TTransInfo* tinfos[] = { &KTinfo_Update_coord, &KTinfo_Update_velocity, &KTinfo_Update_moved, 
+    &KTinfo_Update_borders_count, &KTinfo_Update_ball_creation_ready, &KTinfo_Update_ball_creation_start,
+    &KTinfo_Update_bord_hook_left, &KTinfo_Update_bord_hook_right, &KTinfo_Update_bord_hook_top, &KTinfo_Update_bord_hook_bottom,
     NULL};
-
-const TStateInfo KSinfo_Point = TStateInfo("StPoint", (TStateFactFun) CAE_TState<CF_TdPoint>::NewL );
-const TStateInfo KSinfo_PointF = TStateInfo("StPointF", (TStateFactFun) CAE_TState<CF_TdPointF>::NewL );
-const TStateInfo KSinfo_VectF = TStateInfo("StVectF", (TStateFactFun) CAE_TState<CF_TdVectF>::NewL );
-const TStateInfo KSinfo_Rect = TStateInfo("StRect", (TStateFactFun) CAE_TState<CF_Rect>::NewL );
-const TStateInfo* sinfos[] = {&KSinfo_Point, &KSinfo_PointF, &KSinfo_VectF, &KSinfo_Rect, NULL};
-
-GdkGC *gr_cont;
 
 const char* KLogSpecFileName = "/var/log/faplogspec.txt";
 const char* KLogFileName = "fap-balls.log";
 const char* KSpecFileName = "fap-balls-spec.xml";
-    
 /* Time slice of FAP environment, in milliseconds */
 const gint KFapeTimeSlice = 50;
 
@@ -61,6 +40,7 @@ static gboolean handle_area_size_allocate_event( GtkWidget *widget, GtkAllocatio
 static void draw_area();
 static void draw_ball(CAE_Object *aBall);
 
+GdkGC *gr_cont;
 /* Finite automata programming environment */
 CAE_Env* fape = NULL;
 /* Area painter */
@@ -91,7 +71,7 @@ int main(int argc, char *argv[])
     gtk_widget_set_events (drawing_area, GDK_ALL_EVENTS_MASK);
 
     // Create environment, and painter
-    fape = CAE_Env::NewL(sinfos, tinfos, KSpecFileName, 1, NULL, KLogFileName);
+    fape = CAE_Env::NewL(NULL, tinfos, KSpecFileName, 1, NULL, KLogFileName);
     fapainter = new CFT_BArrea_Painter(drawing_area);
 
     gint x, y, width, height, depth;
@@ -214,44 +194,3 @@ static void draw_ball(CAE_Object *aBall)
     fapainter->drawBall(coord, rad, CF_TdColor(0x00, cgreen, cblue));
 }
 
-// TODO [YB] To migrate to using object proxy instead of direct access to area
-static void UpdateBordersCount(CAE_Object* aObject, CAE_State* aState)
-{
-    CAE_TState<TInt>& sself = (CAE_TState<TInt>&) *aState;
-    // TODO [YB] Implement one shot by detaching inputs
-    if (~sself == 0 ) {
-	// Create borders
-	const CF_Rect& rt = sself.Inp("Rect");
-	TInt midx = (rt.iRightLower.iX - rt.iLeftUpper.iX)/2;
-	TInt midy = (rt.iRightLower.iY - rt.iLeftUpper.iY)/2;
-	CreateBall(rt.iLeftUpper.iX-KBorderRadius, midy, KBorderMass, KBorderRadius, ETrue, ETrue, "Border_Left", "BorderHook_Left");	
-	CreateBall(rt.iRightLower.iX + KBorderRadius, midy, KBorderMass, KBorderRadius, ETrue, ETrue, "Border_Right", "BorderHook_Right");	
-	CreateBall(midx, rt.iLeftUpper.iY - KBorderRadius, KBorderMass, KBorderRadius, ETrue, ETrue, "Border_Top", "BorderHook_Top");	
-	CreateBall(midx, rt.iRightLower.iY + KBorderRadius, KBorderMass, KBorderRadius, ETrue, ETrue, "Border_Bottom", "BorderHook_Bottom");	
-	sself = ~sself + 1;
-    }
-}
-
-static void UpdateBallCreationReady(CAE_Object* aObject, CAE_State* aState)
-{
-    CAE_TState<TBool> &sself = (CAE_TState<TBool>&) *aState;
-    const TBool &start= sself.Inp("Start");
-    if (start && ~sself) {
-	const CF_TdPoint& coord = sself.Inp("Coord");
-	const TUint32& rad= sself.Inp("Rad");
-	char *name = (char*) malloc(100);
-	sprintf(name, "ball_%d", rand());
-	CreateBall(coord.iX,  coord.iY, (const TInt&) sself.Inp("Mass"), rad, EFalse, EFalse, name, "McPos");
-	free(name);
-	sself = EFalse;
-    }	
-    else if (!start) 
-	sself = ETrue;
-}
-
-static void UpdateBallCreationStart(CAE_Object* aObject, CAE_State* aState)
-{
-    CAE_TState<TBool> &sself = (CAE_TState<TBool>&) *aState;
-    const TBool& ready= sself.Inp("Ready");
-    if (ready) sself = EFalse;
-}

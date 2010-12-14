@@ -123,6 +123,48 @@ void UpdateBordHookBottom(CAE_Object* aObject, CAE_State* aState)
     self = CF_TdPoint((arect.iRightLower.iX - arect.iLeftUpper.iX)/2.0, arect.iRightLower.iY + KBorderRadius); 
 }
 
+// TODO [YB] To migrate to using object proxy instead of direct access to area
+void UpdateBordersCount(CAE_Object* aObject, CAE_State* aState)
+{
+    CAE_TState<TInt>& sself = (CAE_TState<TInt>&) *aState;
+    // TODO [YB] Implement one shot by detaching inputs
+    if (~sself == 0 ) {
+	// Create borders
+	const CF_Rect& rt = sself.Inp("Rect");
+	TInt midx = (rt.iRightLower.iX - rt.iLeftUpper.iX)/2;
+	TInt midy = (rt.iRightLower.iY - rt.iLeftUpper.iY)/2;
+	CreateBall(rt.iLeftUpper.iX-KBorderRadius, midy, KBorderMass, KBorderRadius, ETrue, ETrue, "Border_Left", "BorderHook_Left");	
+	CreateBall(rt.iRightLower.iX + KBorderRadius, midy, KBorderMass, KBorderRadius, ETrue, ETrue, "Border_Right", "BorderHook_Right");	
+	CreateBall(midx, rt.iLeftUpper.iY - KBorderRadius, KBorderMass, KBorderRadius, ETrue, ETrue, "Border_Top", "BorderHook_Top");	
+	CreateBall(midx, rt.iRightLower.iY + KBorderRadius, KBorderMass, KBorderRadius, ETrue, ETrue, "Border_Bottom", "BorderHook_Bottom");	
+	sself = ~sself + 1;
+    }
+}
+
+void UpdateBallCreationReady(CAE_Object* aObject, CAE_State* aState)
+{
+    CAE_TState<TBool> &sself = (CAE_TState<TBool>&) *aState;
+    const TBool &start= sself.Inp("Start");
+    if (start && ~sself) {
+	const CF_TdPoint& coord = sself.Inp("Coord");
+	const TUint32& rad= sself.Inp("Rad");
+	char *name = (char*) malloc(100);
+	sprintf(name, "ball_%d", rand());
+	CreateBall(coord.iX,  coord.iY, (const TInt&) sself.Inp("Mass"), rad, EFalse, EFalse, name, "McPos");
+	free(name);
+	sself = EFalse;
+    }	
+    else if (!start) 
+	sself = ETrue;
+}
+
+void UpdateBallCreationStart(CAE_Object* aObject, CAE_State* aState)
+{
+    CAE_TState<TBool> &sself = (CAE_TState<TBool>&) *aState;
+    const TBool& ready= sself.Inp("Ready");
+    if (ready) sself = EFalse;
+}
+
 
 // CFT_Ball
 

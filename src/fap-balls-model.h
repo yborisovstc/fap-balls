@@ -36,6 +36,9 @@ void UpdateBordHookLeft(CAE_Object* aObject, CAE_State* aState);
 void UpdateBordHookRight(CAE_Object* aObject, CAE_State* aState);
 void UpdateBordHookTop(CAE_Object* aObject, CAE_State* aState);
 void UpdateBordHookBottom(CAE_Object* aObject, CAE_State* aState);
+void UpdateBordersCount(CAE_Object* aObject, CAE_State* aState);
+void UpdateBallCreationStart(CAE_Object* aObject, CAE_State* aState);
+void UpdateBallCreationReady(CAE_Object* aObject, CAE_State* aState);
 
 // Sumulator of ball 
 void UpdateCoord(CAE_Object* aObject, CAE_State* aState);
