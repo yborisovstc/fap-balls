@@ -1,0 +1,13 @@
+window_sizes 1272 946 300 966 872 0
+windows_style
+diagrams
+  active  classdiagram_ref 134658 // fap-balls~dgm1
+    966 867 90 4 0 0
+end
+show_stereotypes
+selected classview_ref 128002 // schema_1
+open
+  class_ref 134530 // ball
+  class_ref 156930 // ball_
+end
+end

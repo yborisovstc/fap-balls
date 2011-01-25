@@ -77,8 +77,8 @@ int main(int argc, char *argv[])
     gint x, y, width, height, depth;
     gdk_window_get_geometry(drawing_area->window, &x, &y, &width, &height, &depth);
     CAE_Object* farea = fape->Root();
-    CAE_TState<CF_Rect>* srect = (CAE_TState<CF_Rect>*) farea->GetInput("Rect");
-    *srect = CF_Rect(x, y, x+width, y+height); srect->Confirm();
+    CAE_TState<CF_Rect>& srect =  *(farea->GetInpState("Rect"));
+    srect = CF_Rect(x, y, x+width, y+height); srect.Confirm();
 
     gtk_widget_show(main_window);
     gtk_widget_show(drawing_area);
@@ -118,11 +118,11 @@ static void destroy_event_handler(GtkWidget *widget, gpointer data)
 static gboolean handle_button_press_event(GtkWidget *widget, GdkEventButton *event, gpointer data)
 {
     CAE_Object *area = fape->Root(); 
-    CAE_TState<TInt> *lbdown = (CAE_TState<TInt>*) area->GetInput("LbDown");
-    CAE_TState<CF_TdPoint> *mcpos = (CAE_TState<CF_TdPoint>*) area->GetInput("McPos");
+    CAE_TState<TInt>& lbdown = *(area->GetInpState("LbDown"));
+    CAE_TState<CF_TdPoint>& mcpos = *(area->GetInpState("McPos"));
     if (event->button == 1) {
-	*lbdown = (event->type == GDK_BUTTON_PRESS) ? 1: 0;
-	*mcpos = CF_TdPoint(event->x, event->y);
+	lbdown = (event->type == GDK_BUTTON_PRESS) ? 1: 0;
+	mcpos = CF_TdPoint(event->x, event->y);
     }
     return TRUE;
 }
@@ -130,11 +130,11 @@ static gboolean handle_button_press_event(GtkWidget *widget, GdkEventButton *eve
 static gboolean handle_button_release_event(GtkWidget *widget, GdkEventButton *event, gpointer data)
 {
     CAE_Object *area = fape->Root(); 
-    CAE_TState<TInt> *lbdown = (CAE_TState<TInt>*) area->GetInput("LbDown");
-    CAE_TState<CF_TdPoint> *mcpos = (CAE_TState<CF_TdPoint>*) area->GetInput("McPos");
+    CAE_TState<TInt>& lbdown = *(area->GetInpState("LbDown"));
+    CAE_TState<CF_TdPoint>& mcpos = *(area->GetInpState("McPos"));
     if (event->button == 1) {
-	*lbdown = (event->type == GDK_BUTTON_RELEASE) ? 0: 1;
-	*mcpos = CF_TdPoint(event->x, event->y);
+	lbdown = (event->type == GDK_BUTTON_RELEASE) ? 0: 1;
+	mcpos = CF_TdPoint(event->x, event->y);
     }
     return TRUE;
 }
@@ -153,8 +153,8 @@ static gboolean handle_motion_notify_event( GtkWidget *widget, GdkEventMotion *e
     }
     if (state) {
 	CAE_Object *area = fape->Root(); 
-	CAE_TState<CF_TdPoint> *mcpos = (CAE_TState<CF_TdPoint>*) area->GetInput("McPos");
-	*mcpos = CF_TdPoint(x, y);
+	CAE_TState<CF_TdPoint>& mcpos = *(area->GetInpState("McPos"));
+	mcpos = CF_TdPoint(x, y);
     }
     return TRUE;
 }
@@ -165,9 +165,8 @@ static gboolean handle_area_size_allocate_event( GtkWidget *widget, GtkAllocatio
     gdk_window_get_geometry(drawing_area->window, &x, &y, &width, &height, &depth);
     printf("handle_area_size_allocate: x= %d, y= %d, w= %d, h= %d\n", x, y, width, height);
     CAE_Object* farea = fape->Root();
-    CAE_TState<CF_Rect>* srect = (CAE_TState<CF_Rect>*) farea->GetInput("Rect");
-    *srect = CF_Rect(x, y, x+width, y+height);
-    srect->Confirm();
+    CAE_TState<CF_Rect>& srect =  *(farea->GetInpState("Rect"));
+    srect = CF_Rect(x, y, x+width, y+height); srect.Confirm();
 }
 
 static void draw_area()
@@ -183,10 +182,10 @@ static void draw_area()
 
 static void draw_ball(CAE_Object *aBall)
 {
-    const TUint32& rad = aBall->GetInp("Rad");
-    const TInt& mass = aBall->GetInp("Mass");
-    const TBool& selected = aBall->GetInp("Moved");
-    const CF_TdPointF& coord = aBall->GetOut("Coord");
+    const TUint32& rad = *(aBall->GetOutpState("Rad"));
+    const TInt& mass = *(aBall->GetOutpState("Mass"));
+    const TBool& selected = *(aBall->GetOutpState("Moved"));
+    const CF_TdPointF& coord = *(aBall->GetOutpState("Coord"));
 
     TUint8 cblue = 0xff - (mass*0xff)/KBallMassMax;
     if (cblue < 0) cblue = 0x00;

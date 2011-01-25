@@ -50,17 +50,17 @@ void CreateBall(TInt aCoordX, TInt aCoordY, TInt aMass, TInt aRad, TBool aHooked
     CAE_Object* ball = (CAE_Object *) area->FindByName("ball");
     CAE_Object* newball = ball->CreateNewL(NULL, aName, area);
     CF_TdPointF coord(aCoordX, aCoordY);
-    CAE_TState<TUint32> *srad = (CAE_TState<TUint32>*) newball->GetInp("Rad");
-    CAE_TState<CF_TdPointF> *scoord = (CAE_TState<CF_TdPointF>*) newball->GetOut("Coord");
-    CAE_TState<TInt> *smass = (CAE_TState<TInt>*) newball->GetInp("Mass");
-    CAE_TState<TBool> *shookedperm = (CAE_TState<TBool>*) newball->GetInp("HookedPerm");
-    CAE_TState<TBool> *stransp = (CAE_TState<TBool>*) newball->GetInp("Transp");
+    CAE_TState<TUint32>& srad =  *(newball->GetInpState("Rad"));
+    CAE_TState<CF_TdPointF>& scoord = *(newball->GetInpState("Coord"));
+    CAE_TState<TInt>& smass = *(newball->GetInpState("Mass"));
+    CAE_TState<TBool>& shookedperm = *(newball->GetInpState("HookedPerm"));
+    CAE_TState<TBool>& stransp = *(newball->GetInpState("Transp"));
     // Confirm states because newly created ball can be updated this tick  TODO [YB] not obvious fact
-    *srad = aRad; srad->Confirm();
-    *scoord= coord; scoord->Confirm();
-    *smass = aMass; smass->Confirm();
-    *shookedperm = aHookedPerm; shookedperm->Confirm();
-    *stransp = aTransp; stransp->Confirm();
+    srad = aRad; srad.Confirm();
+    scoord= coord; scoord.Confirm();
+    smass = aMass; smass.Confirm();
+    shookedperm = aHookedPerm; shookedperm.Confirm();
+    stransp = aTransp; stransp.Confirm();
     AddBallL(newball, aHookName);
 }
 
